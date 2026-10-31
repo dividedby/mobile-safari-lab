@@ -1,0 +1,185 @@
+{
+  "info": {
+    "arguments": [
+      "devicectl",
+      "list",
+      "devices",
+      "--json-output",
+      "devices.json"
+    ],
+    "commandType": "devicectl.list.devices",
+    "jsonVersion": 5,
+    "outcome": "success",
+    "version": "642.16"
+  },
+  "result": {
+    "devices": [
+      {
+        "connectionProperties": {
+          "authenticationType": "implicit",
+          "isMobileDeviceOnly": false,
+          "lastConnectionDate": "2026-10-16T21:17:35.000Z",
+          "pairingState": "paired",
+          "potentialHostnames": [],
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected"
+        },
+        "deviceProperties": {
+          "bootState": "shutdown",
+          "ddiServicesAvailable": false,
+          "hasInternalOSBuild": false,
+          "name": "Test Simulator iPhone",
+          "osBuildUpdate": "24A434",
+          "osVersionNumber": "27.0",
+          "provider": "com.apple.CoreSimulator.SimulatorCoreDevicePlugin"
+        },
+        "hardwareProperties": {
+          "cpuType": {
+            "name": "arm64",
+            "subType": 0,
+            "type": 16777228
+          },
+          "deviceType": "iPhone",
+          "hardwareModel": "V64",
+          "marketingName": "iPhone 18 Pro Max",
+          "platform": "iOS",
+          "productType": "iPhone19,3",
+          "reality": "simulated",
+          "supportedCPUTypes": [
+            {
+              "name": "arm64",
+              "subType": 0,
+              "type": 16777228
+            }
+          ],
+          "udid": "A1B2C3D4-0000-4000-8000-000000000100"
+        },
+        "identifier": "A1B2C3D4-0000-4000-8000-000000000100",
+        "propertyDisplayNames": null,
+        "visibilityClass": "simulators"
+      },
+      {
+        "connectionProperties": {
+          "authenticationType": "manualPairing",
+          "isMobileDeviceOnly": false,
+          "lastConnectionDate": "2026-10-16T23:11:00.000Z",
+          "localHostnames": [
+            "Test-iPhone.coredevice.local",
+            "A1B2C3D4-0000-4000-8000-000000000001.coredevice.local",
+            "00008000-000A1B2C3D4E5F60.coredevice.local"
+          ],
+          "pairingState": "paired",
+          "potentialHostnames": [
+            "Test-iPhone.coredevice.local",
+            "A1B2C3D4-0000-4000-8000-000000000001.coredevice.local",
+            "00008000-000A1B2C3D4E5F60.coredevice.local"
+          ],
+          "transportType": "localNetwork",
+          "tunnelIPAddress": "fd00:0000:0000::1",
+          "tunnelState": "connected",
+          "tunnelTransportProtocol": "tcp"
+        },
+        "deviceProperties": {
+          "bootState": "booted",
+          "bootedFromSnapshot": true,
+          "bootedSnapshotName": "com.apple.os.update-TEST",
+          "ddiServicesAvailable": true,
+          "developerModeStatus": "enabled",
+          "hasInternalOSBuild": false,
+          "name": "Test iPhone",
+          "osBuildUpdate": "24A446",
+          "osVersionNumber": "27.0.1",
+          "rootFileSystemIsWritable": false,
+          "screenViewingURL": "devices://device/open?id=A1B2C3D4-0000-4000-8000-000000000001",
+          "supportsCheckedAllocations": false
+        },
+        "hardwareProperties": {
+          "cpuType": {
+            "name": "arm64e",
+            "subType": -2147483646,
+            "type": 16777228
+          },
+          "deviceType": "iPhone",
+          "ecid": 1234567890123456,
+          "hardwareModel": "D84AP",
+          "internalStorageCapacity": 256000000000,
+          "isProductionFused": true,
+          "marketingName": "iPhone 15 Pro Max",
+          "platform": "iOS",
+          "productType": "iPhone16,2",
+          "reality": "physical",
+          "serialNumber": "TESTSERIAL1",
+          "supportedCPUTypes": [
+            {
+              "name": "arm64e",
+              "subType": -2147483646,
+              "type": 16777228
+            },
+            {
+              "name": "arm64",
+              "subType": 0,
+              "type": 16777228
+            },
+            {
+              "name": "arm64",
+              "subType": 1,
+              "type": 16777228
+            }
+          ],
+          "supportedDeviceFamilies": [
+            1
+          ],
+          "thinningProductType": "iPhone16,2",
+          "udid": "00008000-000A1B2C3D4E5F60"
+        },
+        "identifier": "A1B2C3D4-0000-4000-8000-000000000001",
+        "propertyDisplayNames": null,
+        "visibilityClass": "default"
+      },
+      {
+        "connectionProperties": {
+          "authenticationType": "implicit",
+          "isMobileDeviceOnly": false,
+          "lastConnectionDate": "2026-10-16T22:59:00.000Z",
+          "pairingState": "paired",
+          "potentialHostnames": [],
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected"
+        },
+        "deviceProperties": {
+          "bootState": "shutdown",
+          "ddiServicesAvailable": false,
+          "hasInternalOSBuild": false,
+          "name": "iPhone 18 Pro",
+          "osBuildUpdate": "24A434",
+          "osVersionNumber": "27.0",
+          "provider": "com.apple.CoreSimulator.SimulatorCoreDevicePlugin"
+        },
+        "hardwareProperties": {
+          "cpuType": {
+            "name": "arm64",
+            "subType": 0,
+            "type": 16777228
+          },
+          "deviceType": "iPhone",
+          "hardwareModel": "V63",
+          "marketingName": "iPhone 18 Pro",
+          "platform": "iOS",
+          "productType": "iPhone19,2",
+          "reality": "simulated",
+          "supportedCPUTypes": [
+            {
+              "name": "arm64",
+              "subType": 0,
+              "type": 16777228
+            }
+          ],
+          "udid": "A1B2C3D4-0000-4000-8000-000000000101"
+        },
+        "identifier": "A1B2C3D4-0000-4000-8000-000000000101",
+        "propertyDisplayNames": null,
+        "visibilityClass": "simulators"
+      }
+    ]
+  }
+}

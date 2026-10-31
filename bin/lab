@@ -1,0 +1,27 @@
+#!/usr/bin/env node
+// Availability: up [--target auto|device|simulator] [--resign] [--url <URL>] (health check and recovery), down [--idle] (stop what the lab started), status [--check-update],
+// hold [--minutes N] (keep the idle stop off while a person uses the simulator), release, service install|uninstall|status (the Appium LaunchAgent), and phone
+// setup --udid <UDID> --team <TEAM> [--bundle-id <id>] [--autocorrection on|off] [--prediction on|off] [--focus on|off] | status | forget (the physical iPhone), and tunnel
+// up|down|status (the Wi-Fi tunnel to it).
+// Prints JSON. See README.md.
+import { cli } from '../lib/core.js';
+import { handlers } from '../lib/lab.js';
+
+const usage = {
+  overview: 'lab <command> [args]. `lab help <command>` or `lab <command> --help` shows one line. Prints one JSON object.',
+  commands: {
+    up: 'lab up [--target auto|device|simulator] [--resign] [--url <http(s) URL>] [--appearance light|dark] [--orientation portrait|landscape] [--no-focus] [--allow-host <host>]... [--force]  (get a working simulator or iPhone and Safari session; --appearance and --orientation change the iPhone and put it back at the end; on the iPhone Lab Focus is turned on unless --no-focus; --allow-host names a host the lab may follow its phone tab to, see `safari start`)',
+    down: 'lab down [--force] [--keep-service] | lab down --idle  (stop what the lab started; --idle is the idle stop the LaunchAgent runs: it stops the lab only after 15 min with no command that takes, renews or releases the lease)',
+    status: 'lab status [--check-update]  (what is running, the lease, the saved phone, whether this checkout of the lab is out of date)',
+    phone: 'lab phone setup --udid <phone UDID> --team <10-character team id> [--bundle-id <id>] [--autocorrection on|off] [--prediction on|off] [--focus on|off] [--focus-on-shortcut <name>] [--focus-off-shortcut <name>] | status | forget | restore [--forget] | focus test|off  (the physical iPhone; restore puts back the appearance, orientation and Lab Focus the lab changed; focus test turns Lab Focus on to check your shortcuts, focus off turns it off)',
+    hold: 'lab hold [--minutes N]  (keep the idle stop off while a person uses the simulator by hand: default 60 minutes, 1 to 120; takes no lease; `lab down` or a fresh boot ends it)',
+    release: 'lab release [--force]  (give up the simulator lease)',
+    service: 'lab service install [--replace] [--log-level info|debug] [--no-idle-stop] | uninstall | status  (the Appium LaunchAgent, and the idle stop and tunnel host that go with it)',
+    tunnel: 'lab tunnel up | down | status  (the Wi-Fi tunnel to the saved phone: `lab up` opens it and `lab down` closes it; these do it by hand)',
+  },
+};
+
+// Device ids print as `…<last4>`; only the owner's own look at the saved phone shows it whole.
+const unmask = (name, args) => name === 'phone' && ['status', 'setup'].includes(args[0]);
+
+process.exitCode = await cli(handlers, process.argv.slice(2), { usage, unmask });

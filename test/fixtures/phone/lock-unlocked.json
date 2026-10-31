@@ -1,0 +1,23 @@
+{
+  "info": {
+    "arguments": [
+      "devicectl",
+      "device",
+      "info",
+      "lockState",
+      "--device",
+      "00008000-000A1B2C3D4E5F60",
+      "--json-output",
+      "lock.json"
+    ],
+    "commandType": "devicectl.device.info.lockState",
+    "jsonVersion": 5,
+    "outcome": "success",
+    "version": "642.16"
+  },
+  "result": {
+    "deviceIdentifier": "A1B2C3D4-0000-4000-8000-000000000001",
+    "passcodeRequired": false,
+    "unlockedSinceBoot": true
+  }
+}

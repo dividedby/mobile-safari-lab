@@ -1,0 +1,15 @@
+{
+  "name": "msl-page-pin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Keeps the lab's Appium session on the page it selected, so a Safari tab the owner opens can't receive a script.",
+  "type": "module",
+  "main": "index.js",
+  "appium": {
+    "pluginName": "msl-page-pin",
+    "mainClass": "PagePinPlugin"
+  },
+  "peerDependencies": {
+    "appium": "^3.8.0"
+  }
+}

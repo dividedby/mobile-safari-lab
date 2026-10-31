@@ -1,0 +1,26 @@
+{
+  "info": {
+    "arguments": [
+      "devicectl",
+      "device",
+      "info",
+      "appearance",
+      "--device",
+      "00008000-000A1B2C3D4E5F60",
+      "--json-output",
+      "out.json"
+    ],
+    "commandType": "devicectl.device.info.appearance",
+    "jsonVersion": 5,
+    "outcome": "success",
+    "version": "642.16"
+  },
+  "result": {
+    "colorFilter": "none",
+    "deviceIdentifier": "A1B2C3D4-0000-4000-8000-000000000001",
+    "increaseContrast": "disabled",
+    "lookAndFeel": "Liquid Glass",
+    "textSize": "large",
+    "userInterfaceStyle": "light"
+  }
+}

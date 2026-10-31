@@ -1,0 +1,8 @@
+ERROR: A connection to this device could not be established. (com.apple.dt.CoreDeviceError error 4000 (0xFA0))
+       NSLocalizedRecoverySuggestion = Ensure the device is connected and unlocked, then try again.
+       --
+       Internal logic error: Connection was invalidated (com.apple.CoreDevice.ControlChannelConnectionError error 1)
+       --
+       Transport error
+       --
+       The connection was invalidated.

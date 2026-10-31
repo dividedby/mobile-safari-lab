@@ -1,0 +1,20 @@
+ERROR: Failed to install the app on the device. (com.apple.dt.CoreDeviceError error 3002 (0xBBA))
+       NSURL = file:///Users/owner/.local/share/msl-appium/wda-device/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app/
+       ----------------------------------------
+           Unable to Install “WebDriverAgentRunner-Runner” (IXUserPresentableErrorDomain error 14 (0x0E))
+           NSLocalizedFailureReason = This app cannot be installed because its integrity could not be verified.
+           NSLocalizedRecoverySuggestion = This device has reached the maximum number of installed apps using a free developer profile: {(
+               "TEAMID0000.io.github.dividedby.free.stremio",
+               "TEAMID0000.io.github.dividedby.free.filler",
+               "TEAMID0000.io.github.dividedby.free.apollo"
+           )}
+       ----------------------------------------
+               This device has reached the maximum number of installed apps using a free developer profile: {(
+           "TEAMID0000.io.github.dividedby.free.stremio",
+           "TEAMID0000.io.github.dividedby.free.filler",
+           "TEAMID0000.io.github.dividedby.free.apollo"
+       )} (MIInstallerErrorDomain error 13 (0x0D))
+               SourceFileLine = 180
+               FunctionName = -[MIFreeProfileValidatedAppTracker _onQueue_addReferenceForApplicationIdentifier:bundle:error:]
+               LegacyErrorString = ApplicationVerificationFailed
+               LibMISErrorNumber = -402620383

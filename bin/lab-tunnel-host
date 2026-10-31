@@ -1,0 +1,12 @@
+#!/usr/bin/env node
+// The Wi-Fi tunnel host (issue 15), run by launchd as com.dividedby.msl-tunnel: `lab service install`
+// writes its plist, `lab up` and `lab tunnel up` start it, `lab down` and `lab tunnel down` stop it.
+// Not a lab command: no JSON, no lease, no activity; one line per event on stderr (the agent's log).
+import { runHost } from '../lib/tunnel-host.js';
+
+if (process.getuid?.() === 0 && process.env.MSL_ALLOW_ROOT !== '1') {
+  console.error('[tunnel] refusing to run as root: run it as your own user, without sudo');
+  process.exit(1);
+}
+const { code } = await runHost();
+process.exit(code);

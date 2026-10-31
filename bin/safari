@@ -1,0 +1,41 @@
+#!/usr/bin/env node
+// The page in Mobile Safari: start, open, refresh, eval, inject, click, type, tap, wait, keys,
+// swipe, ui, source, shot, console, network, url, appearance and orientation (iPhone only, through
+// devicectl, restored at the end), stop. Everything else runs through Appium, on the
+// simulator or the saved iPhone (`start --target auto|device|simulator`, `--device <UDID>`);
+// on the phone every page command goes through the tab guard (the run's own tab only, on the
+// origins it was sent to), and `stop` closes that tab from a timer in the page.
+// Prints JSON; a failed page command leaves a screenshot and the page source.
+import { cli } from '../lib/core.js';
+import { handlers, failureArtifacts } from '../lib/safari.js';
+import { guard } from '../lib/lease.js';
+
+const usage = {
+  overview: 'safari <command> [args]. `safari help <command>` or `safari <command> --help` shows one line. Prints one JSON object. Text that is exactly -h or --help cannot be typed through `type` or `eval`; `keys` takes it after `--`.',
+  commands: {
+    start: 'safari start [--target auto|device|simulator] [--device <UDID>] [--port N] [--allow-host <host>]...  (open a session; --allow-host names a host the lab may follow its phone tab to when the page goes there, http and https, exact match, up to 10; any other site still ends the session\'s trust in the tab)',
+    open: 'safari open <http(s) URL> [--reinject] [--wait-for <css>] [--settle] [--timeout <ms>] [--storage <key=value>]...  (load the page, wait for the new document; then for the element, and/or for the page to settle; --storage sets localStorage on the URL\'s origin first)',
+    refresh: 'safari refresh [--reinject] [--wait-for <css>] [--settle] [--timeout <ms>]  (reload, wait for the new document; then as open)',
+    eval: "safari eval '<js>' [--timeout <ms>]  (run JavaScript in the page; several statements need `return`; a Promise is awaited, 10 s by default)",
+    inject: 'safari inject <file.user.js>  or  safari inject --forget <file.user.js>  or  safari inject --clear  (run a userscript in the page and record it for --reinject; --forget drops one recorded file, --clear all of them; neither runs anything in the page)',
+    click: 'safari click [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--]  (a script click on the element; --shadow: every argument is a selector, the last is the target)',
+    type: 'safari type [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--] <text>  (set the text of a page field; same selectors as click)',
+    tap: 'safari tap [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--]  or  safari tap --label "<a11y label>"  (a real touch on the element, or on the one native element with that label)',
+    wait: 'safari wait [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--visible|--gone] [--timeout <ms>] [--]  or  safari wait --settled [--quiet <ms>] [--timeout <ms>]  (until the element exists, is visible or is gone; or until the page stops loading and changing; 10 s by default, 60 s at most)',
+    keys: 'safari keys [--no-verify] [--] <text>  (key events into the focused field; \\b is Backspace)',
+    swipe: 'safari swipe up|down  (a touch drag across the page)',
+    ui: "safari ui  (Safari's native accessibility tree)",
+    source: 'safari source  (the page source)',
+    shot: 'safari shot [name] [--page | --element <css> [--text <T> [--contains]] [--nth <N>] [--shadow]] [--scale <0-1> | --width <px>] [--]  (screenshot into the run folder; --page keeps the web content only, --element one element, --scale or --width shrinks it; the cut is made in memory and a cut that fails writes nothing)',
+    console: 'safari console  (console messages since the last call)',
+    network: 'safari network  (network log since the last call)',
+    url: 'safari url  (the current URL)',
+    appearance: "safari appearance light|dark|restore|status  (the iPhone's light or dark mode, through devicectl; the mode it had is written down first and put back by `restore`, `stop`, `lab down` and the next `lab up`; iPhone only)",
+    orientation: "safari orientation portrait|landscape|restore|status  (the iPhone's screen orientation, through devicectl; put back like appearance; with Portrait Orientation Lock on it fails; iPhone only)",
+    stop: 'safari stop  (end the session and release the lease)',
+  },
+};
+
+// Every command shares the one session (even `url` switches context, `console` drains a
+// buffer), so every command takes or renews the simulator lease; `stop` releases it.
+process.exitCode = await cli(handlers, process.argv.slice(2), { onError: failureArtifacts, usage, ...guard(new Set(Object.keys(handlers))) });

@@ -1,0 +1,22 @@
+{
+  "name": "mobile-safari-lab",
+  "version": "0.10.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Drives real Mobile Safari on your iPhone or the iOS Simulator for testing pages and userscripts.",
+  "type": "module",
+  "bin": {
+    "lab": "bin/lab",
+    "sim": "bin/sim",
+    "safari": "bin/safari"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.18.3",
+  "scripts": {
+    "test": "node --test --test-timeout=120000",
+    "check-secrets": "node scripts/check-secrets.mjs --all",
+    "prepare": "git config core.hooksPath .githooks"
+  }
+}

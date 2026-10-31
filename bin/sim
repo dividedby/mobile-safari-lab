@@ -1,0 +1,55 @@
+#!/usr/bin/env node
+// The simulator: create, boot, open, shot, tap, type, scroll, swipe, ui, appearance,
+// statusbar, shutdown, reset, profile, run, doctor. Prints JSON. See README.md.
+import { cli } from '../lib/core.js';
+import { handlers, refuseOnDevice, checkProfileArg } from '../lib/sim.js';
+import { guard, recordActivity } from '../lib/lease.js';
+
+// Commands that change the phone take (or renew) the simulator lease; the rest only look (`shot` and `ui` still count as activity, below).
+// `create` takes it too: a new simulator is booted once to finish its first-boot setup.
+const leased = new Set(['create', 'boot', 'open', 'tap', 'type', 'scroll', 'swipe', 'appearance', 'statusbar', 'shutdown', 'reset']);
+
+// While the Safari session is on the iPhone these would act on (or show) the idle simulator
+// instead of the phone, so they refuse. `shot` and `ui` only look, but at the wrong screen.
+const deviceRefused = new Set([...leased].filter(n => n !== 'create').concat('shot', 'ui')); // `create` refuses itself, and only when it would boot a new simulator
+
+// These only look, so they take no lease, but they are activity for the idle stop.
+const looks = new Set(['shot', 'ui']);
+
+// The refusal comes first, so a refused command never takes or renews the lease.
+const lease = guard(leased);
+const hooks = {
+  ...lease,
+  async before(name, args) {
+    checkProfileArg(name, args); // an unknown profile is refused before the lease is taken
+    if (deviceRefused.has(name)) refuseOnDevice(name);
+    // `shot` and `ui` take no lease, but the person is using the simulator: the idle stop counts them.
+    if (looks.has(name)) await recordActivity();
+    return lease.before(name, args);
+  },
+};
+
+const usage = {
+  overview: 'sim <command> [args]. `sim help <command>` or `sim <command> --help` shows one line. Prints one JSON object. Text that is exactly -h or --help cannot be typed through `type`.',
+  commands: {
+    create: 'sim create [--profile clean|configured]  (make the lab simulator once and save its UDID; a new one boots once, up to 25 minutes, to finish its first-boot setup, then shuts down; configured is the second one, for sign-ins)',
+    udid: 'sim udid [--profile clean|configured]  (the simulator UDID in use)',
+    boot: 'sim boot [--profile clean|configured]  (boot and wait until ready; the other profile is shut down first)',
+    open: 'sim open <http(s) URL>  (open a URL in Safari)',
+    shot: 'sim shot [name]  (screenshot into the run folder)',
+    tap: 'sim tap --label TEXT | --id ID | X Y [--px]',
+    type: 'sim type <text>',
+    scroll: 'sim scroll up|down|left|right',
+    swipe: 'sim swipe X1 Y1 X2 Y2  (points)',
+    ui: 'sim ui  (the accessibility tree)',
+    appearance: 'sim appearance dark|light',
+    statusbar: 'sim statusbar [clear]  (clean status bar for screenshots; clear undoes it)',
+    shutdown: 'sim shutdown [--profile clean|configured]',
+    reset: 'sim reset [--profile clean|configured] [--yes]  (erase the simulator; the configured one needs --profile configured --yes)',
+    profile: 'sim profile status  (the two simulators and which is booted)',
+    run: 'sim run [label]  (start a new run folder)',
+    doctor: 'sim doctor  (check the tools this needs)',
+  },
+};
+
+process.exitCode = await cli(handlers, process.argv.slice(2), { ...hooks, usage });

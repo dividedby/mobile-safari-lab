@@ -1,0 +1,24 @@
+{
+  "info": {
+    "arguments": [
+      "devicectl",
+      "device",
+      "settings",
+      "appearance",
+      "--mode",
+      "dark",
+      "--device",
+      "00008000-000A1B2C3D4E5F60",
+      "--json-output",
+      "out.json"
+    ],
+    "commandType": "devicectl.device.settings.appearance",
+    "jsonVersion": 5,
+    "outcome": "success",
+    "version": "642.16"
+  },
+  "result": {
+    "deviceIdentifier": "A1B2C3D4-0000-4000-8000-000000000001",
+    "userInterfaceStyle": "dark"
+  }
+}
