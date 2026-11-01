@@ -7,6 +7,8 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ### Added
 
+- An [Idea Inbox](https://github.com/dividedby/mobile-safari-lab/issues/6) for loose ideas, and `docs/agents/idea-inbox.md`
+  on how agents capture and drain it, after sideload's. AGENTS.md, CLAUDE.md and CONTRIBUTING.md point to it.
 - The repo is ready to be public: an MIT `LICENSE` (and `"license": "MIT"` in `package.json`), `CONTRIBUTING.md` (what
   never goes in an issue, security reports, how to send a change, and guidance for AI agents), and a "License and
   trademarks" section in the README. Links to this repo's old issues and pull requests in the docs and code comments

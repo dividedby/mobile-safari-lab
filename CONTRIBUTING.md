@@ -15,7 +15,8 @@ and I'll try to get to them.
 
 ## Issues
 
-- Bugs and scoped requests: open an issue, one per bug or feature. Small docs fixes can share one.
+- Bugs and scoped requests: open an issue, one per bug or feature. Small docs fixes can share one. Loose ideas go in
+  the [Idea Inbox](https://github.com/dividedby/mobile-safari-lab/issues/6).
 - Never put device UDIDs or CoreDevice IDs, device names, team IDs, signing identity names, Apple ID details,
   certificates or profiles in an issue, a log you paste or a screenshot. A plain `safari shot` on the iPhone is the
   whole screen (status bar, notifications, other apps): share `safari shot --page` or `--element` crops only.

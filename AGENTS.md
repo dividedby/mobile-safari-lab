@@ -510,6 +510,9 @@ the docs got wrong or left out. Write it down at the time in `<run folder>/lab-f
 run folder is the `run` field of every command). One line each: the command, what happened, the
 JSON `error`, `needs` or `human`, and what you expected.
 
+A loose idea that isn't a bug or a clear request goes to the top of the
+[Idea Inbox](https://github.com/dividedby/mobile-safari-lab/issues/6) instead (`docs/agents/idea-inbox.md`).
+
 **What counts.**
 - A lab bug: a wrong result, a crash, a misleading `error` or `human`.
 - A missing feature: something you needed and the commands can't do.
