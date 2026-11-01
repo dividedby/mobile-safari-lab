@@ -13,7 +13,7 @@ names, signing identities, Apple ID details or whole-phone screenshots.
 
 ## Capture
 
-A new idea goes in as an unchecked item at the **top** of `## Ideas`. Capture the idea and the context available right
+A new idea goes in as an unchecked item at the **top** of `## Ideas`, so the list stays newest first. Capture the idea and the context available right
 now: the file, issue, PR or link that prompted it, and a sentence on why it matters, so a later drain doesn't start
 cold. Don't question, expand or scope it yet; that happens at drain.
 
@@ -28,14 +28,16 @@ When asked to drain the Inbox, or one item in it, take the item as far as it nee
    one (record that). When an idea cites another issue or PR, check its current state: a closed issue's last comment may
    already answer the idea. Numbers from before the repo went public refer to the private archive.
 2. **Map the decisions, if it's tangled.** When the idea has several unknowns or competing approaches, split it into a
-   sequence of investigation issues ("Investigate X to determine Y"), each settling a decision the next depends on. Skip
-   this when the idea is already one decision with a clear next step.
+   sequence of investigation issues ("Investigate X to determine Y"), each settling a decision the next depends on, and
+   move the item to `✅ Actioned` with `→ #<first> #<second> …` for all of them. Skip this when the idea is already one
+   decision with a clear next step.
 3. **Do only the steps it needs.** Talk it through with the owner when it's fuzzy or touches the terms in `CONTEXT.md`
    or an ADR. Write a spec first only when it's big enough to need one. A small, clear idea may need only one issue.
 4. **Labels.** Use the repo's: `bug`, `enhancement` or `documentation`.
 5. **Write a brief an agent can finish.** Name the files or area, what done looks like, what's out of scope, and how to
    test it with the stand-ins. Anything that needs the real phone or simulator is the owner's to run: say so, with
-   step-by-step instructions and what to check, instead of leaving it to judgement.
+   step-by-step instructions and what to check, instead of leaving it to judgement. When that's only part of the idea,
+   split it into an issue an agent can finish and one for the owner.
 6. **Move it to Actioned.** Once the idea is an issue or PR, or is settled as a duplicate, move it to `✅ Actioned`,
    check it, and append `→ #<number>`.
 
