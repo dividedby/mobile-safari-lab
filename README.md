@@ -7,11 +7,11 @@ when no phone is saved; the iPhone is the final check, and it drives only its ow
 
 Three small command-line tools, no dependencies in this repo:
 
-| Tool | Drives | Built on |
-| --- | --- | --- |
-| `bin/sim` | the phone: boot, open a URL, screenshot, tap, type, scroll, accessibility tree, dark mode | `xcrun simctl` + [AXe](https://github.com/cameroncooke/AXe) |
-| `bin/lab` | availability: one command (`lab up`) that gets a working simulator or iPhone and Safari session whatever state the Mac is in, `lab down` that stops it all again (and stops it by itself after 15 minutes idle), `lab phone` to save the iPhone, the Appium LaunchAgent, and the simulator lease that keeps two agents apart | `launchctl`, `xcrun simctl`, `xcrun devicectl`, the other two tools |
-| `bin/safari` | the page: open, refresh, find by CSS, click, tap and type like a finger, scroll, run JS, inject a userscript, page source, console and network logs | [Appium](https://appium.io) XCUITest (kept outside this repo), on the simulator or the saved iPhone |
+| Tool         | Drives                                                                                                                                                                                                                                                                                                                       | Built on                                                                                            |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `bin/sim`    | the phone: boot, open a URL, screenshot, tap, type, scroll, accessibility tree, dark mode                                                                                                                                                                                                                                    | `xcrun simctl` + [AXe](https://github.com/cameroncooke/AXe)                                         |
+| `bin/lab`    | availability: one command (`lab up`) that gets a working simulator or iPhone and Safari session whatever state the Mac is in, `lab down` that stops it all again (and stops it by itself after 15 minutes idle), `lab phone` to save the iPhone, the Appium LaunchAgent, and the simulator lease that keeps two agents apart | `launchctl`, `xcrun simctl`, `xcrun devicectl`, the other two tools                                 |
+| `bin/safari` | the page: open, refresh, find by CSS, click, tap and type like a finger, scroll, run JS, inject a userscript, page source, console and network logs                                                                                                                                                                          | [Appium](https://appium.io) XCUITest (kept outside this repo), on the simulator or the saved iPhone |
 
 Every command prints JSON. Screenshots, page source and logs go into a run folder
 (`runs/<date>-<label>/`, newest 20 kept, gitignored). Plans and reasoning:
@@ -49,17 +49,21 @@ public (2026-10-31) are plain text ("issue 98"): they refer to the private archi
    brew install cameroncooke/axe/axe
    ```
 3. **Appium**, for the page (installed outside this repo, with pnpm):
+
    ```sh
    mkdir -p ~/.local/share/msl-appium && cd ~/.local/share/msl-appium && pnpm add appium@3.8.0 appium-xcuitest-driver@12.18.1
    APPIUM_HOME=~/.local/share/msl-appium ~/.local/share/msl-appium/node_modules/.bin/appium driver list --installed   # should list xcuitest
    ```
+
    Link the lab's own **page pin plugin** into the same folder (after step 5 has cloned this
    repo; a link, so the plugin is always the code in your checkout). This is for the iPhone and
    simulator-only setups alike: `lab service install` refuses until the plugin is linked (step 7):
+
    ```sh
    cd ~/.local/share/msl-appium && pnpm add link:$HOME/repos/mobile-safari-lab/appium-plugin
    APPIUM_HOME=~/.local/share/msl-appium ~/.local/share/msl-appium/node_modules/.bin/appium plugin list --installed   # should list msl-page-pin
    ```
+
    Set `MSL_APPIUM_HOME` to install somewhere else. The first session builds
    WebDriverAgent into that folder, which takes about 2 minutes; later ones start fast.
 
@@ -69,6 +73,7 @@ public (2026-10-31) are plain text ("issue 98"): they refer to the private archi
    (`appium:wdaBindingIP`), so nothing else on the Wi-Fi can reach it.
    For a Mac that is used remotely, install it as a **LaunchAgent** instead (step 7):
    launchd keeps it running and restarts it when it dies.
+
 4. **An iPhone**, optional: see [Real iPhone](#real-iphone). It needs step 7 (the LaunchAgent).
    For Wi-Fi (no cable) it also needs **pymobiledevice3** (11.40.2 or newer), installed as your own user
    with uv; the lab finds it in `uv tool dir --bin`, else `~/.local/bin`, never on `PATH`:
@@ -102,10 +107,12 @@ public (2026-10-31) are plain text ("issue 98"): they refer to the private archi
    Optional: `sim create --profile configured` makes a second simulator that keeps sign-ins you make by
    hand ("Two simulators" under Using it).
 7. **Appium as a LaunchAgent** (recommended when Claude uses the Mac remotely):
+
    ```sh
    lab service install      # writes ~/Library/LaunchAgents/com.dividedby.msl-appium.plist and loads it
    lab service status       # loaded, pid, reachable, the node it runs, the log level, and anything wrong
    ```
+
    This runs Appium as you, in your login session (the `gui/<uid>` domain, so it can reach
    the simulator), with the page pin plugin (`--use-plugins msl-page-pin`; `install` refuses
    until the plugin is linked as in step 3, and `lab service status` lists a plist without it),
@@ -136,7 +143,7 @@ public (2026-10-31) are plain text ("issue 98"): they refer to the private archi
    The plist records the absolute path of `node`: `/opt/homebrew/bin/node` when that leads
    to the node running the install, otherwise the first stable `node` symlink on `PATH`
    (never a versioned Cellar path, so a Homebrew patch upgrade keeps working). `lab service
-   status` shows the path it chose as `node`. **A node major upgrade, or moving node, may
+status` shows the path it chose as `node`. **A node major upgrade, or moving node, may
    need `lab service install` again**; `lab service status` lists it under `issues` when the
    recorded node no longer exists.
 
@@ -279,10 +286,19 @@ falls behind GitHub is out of date everywhere. `lab up` and `lab status` add a `
 object (and `sim doctor` adds it when there is something to say):
 
 ```json
-{ "checked": "2026-10-18T17:02:11.480Z", "path": "/Users/me/repos/mobile-safari-lab", "local": "064985a",
-  "branch": "main", "dirty": false, "remote": "bc0e46a", "behind": true,
-  "human": ["The lab at /Users/me/repos/mobile-safari-lab is out of date (064985a vs bc0e46a on GitHub). Run: git -C /Users/me/repos/mobile-safari-lab pull --ff-only",
-            "Then start a new agent session so the skill reloads."] }
+{
+  "checked": "2026-10-18T17:02:11.480Z",
+  "path": "/Users/me/repos/mobile-safari-lab",
+  "local": "064985a",
+  "branch": "main",
+  "dirty": false,
+  "remote": "bc0e46a",
+  "behind": true,
+  "human": [
+    "The lab at /Users/me/repos/mobile-safari-lab is out of date (064985a vs bc0e46a on GitHub). Run: git -C /Users/me/repos/mobile-safari-lab pull --ff-only",
+    "Then start a new agent session so the skill reloads."
+  ]
+}
 ```
 
 `local`, `branch` and `dirty` (uncommitted changes to tracked files) come from the checkout the
@@ -486,12 +502,12 @@ names are not recognised, so look at `network.json` before sharing it.
 **What `network` and `console` report.** Where they read from depends on the target (see
 Limits for the details):
 
-| | Simulator | iPhone |
-| --- | --- | --- |
-| `console` | Safari's own log, through Appium | the lab's collector in its own tab |
-| `network` | Safari's own log, through Appium: every request with method, status and headers (secrets removed) | the lab page's own Resource Timing, rebuilt from a fixed list of fields |
-| `count`, `requests` | `count` is the raw events in `network.json`; `requests` is one entry per request (method, url, status) | `requests` are the entries; `truncated` says more are waiting |
-| `dropped` | entries the lab left out: byte-identical copies (Appium repeats an entry once per listener it added) and WebDriverAgent's own `127.0.0.1:8100` traffic | always 0 |
+|                     | Simulator                                                                                                                                              | iPhone                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `console`           | Safari's own log, through Appium                                                                                                                       | the lab's collector in its own tab                                      |
+| `network`           | Safari's own log, through Appium: every request with method, status and headers (secrets removed)                                                      | the lab page's own Resource Timing, rebuilt from a fixed list of fields |
+| `count`, `requests` | `count` is the raw events in `network.json`; `requests` is one entry per request (method, url, status)                                                 | `requests` are the entries; `truncated` says more are waiting           |
+| `dropped`           | entries the lab left out: byte-identical copies (Appium repeats an entry once per listener it added) and WebDriverAgent's own `127.0.0.1:8100` traffic | always 0                                                                |
 
 ### Real iPhone
 
@@ -559,13 +575,13 @@ been paired over it. `lab up` opens the tunnel itself when it finds the phone on
 network (a `tunnel` step), starts the phone's WebDriverAgent on the tunnel address, and
 points Appium at it. Only the Mac's own network works: away from it is not supported.
 
-| | Cable | Wi-Fi (same network as the Mac) |
-| --- | --- | --- |
-| Setup | plug in, trust | cable once to pair and trust (no Xcode setting); pymobiledevice3 11.40.2 or newer; `lab service install` (it installs the tunnel agent) |
-| Speed | `safari eval` about 20 ms | roughly half the speed per call (to be re-measured over the tunnel) |
-| Phone must be | unlocked at `lab up` | unlocked at `lab up` and on the same network |
-| After sleep, or toggling Wi-Fi | fine | a failed command says `needs: tunnel`; `lab up` opens a new tunnel and drops the old session at once (below) |
-| Away from the Mac | the cable is all that is needed | not supported |
+|                                | Cable                           | Wi-Fi (same network as the Mac)                                                                                                         |
+| ------------------------------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Setup                          | plug in, trust                  | cable once to pair and trust (no Xcode setting); pymobiledevice3 11.40.2 or newer; `lab service install` (it installs the tunnel agent) |
+| Speed                          | `safari eval` about 20 ms       | roughly half the speed per call (to be re-measured over the tunnel)                                                                     |
+| Phone must be                  | unlocked at `lab up`            | unlocked at `lab up` and on the same network                                                                                            |
+| After sleep, or toggling Wi-Fi | fine                            | a failed command says `needs: tunnel`; `lab up` opens a new tunnel and drops the old session at once (below)                            |
+| Away from the Mac              | the cable is all that is needed | not supported                                                                                                                           |
 
 Either way the first session after a while takes about 50 s (WebDriverAgent is built and
 installed), and later ones 14 to 18 s; over Wi-Fi the warm target is about 20 s.
@@ -603,14 +619,14 @@ agent or the idle stop, and only once per command.
 
 **iPhone or simulator**
 
-| | iPhone | Simulator |
-| --- | --- | --- |
-| Engine | the real WebKit build, GPU, fonts and network | the Mac's, close but not the same |
-| Profile | your own: logged in, your extensions (they may inject into pages) | clean, logged out, no extensions; or `--profile configured`: only the sign-ins you made by hand |
-| Appearance | `safari appearance light` or `dark`, `safari orientation portrait` or `landscape`, put back when the session ends (no status-bar control) | `sim appearance`, `sim statusbar` (appearance and orientation commands are not supported on the simulator) |
-| Signing | needed; renewed weekly (below) | none |
-| Cost | battery; the phone must be unlocked and awake; 14 to 18 s warm `lab up`, about 50 s cold | about 3 to 5 GB of RAM; fast once booted, but a cold `lab up` takes 4 to 10 minutes on an 8 GB Mac, and the first boot of a new simulator up to 25 |
-| Your other tabs | untouched (see Privacy) | none |
+|                 | iPhone                                                                                                                                    | Simulator                                                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Engine          | the real WebKit build, GPU, fonts and network                                                                                             | the Mac's, close but not the same                                                                                                                  |
+| Profile         | your own: logged in, your extensions (they may inject into pages)                                                                         | clean, logged out, no extensions; or `--profile configured`: only the sign-ins you made by hand                                                    |
+| Appearance      | `safari appearance light` or `dark`, `safari orientation portrait` or `landscape`, put back when the session ends (no status-bar control) | `sim appearance`, `sim statusbar` (appearance and orientation commands are not supported on the simulator)                                         |
+| Signing         | needed; renewed weekly (below)                                                                                                            | none                                                                                                                                               |
+| Cost            | battery; the phone must be unlocked and awake; 14 to 18 s warm `lab up`, about 50 s cold                                                  | about 3 to 5 GB of RAM; fast once booted, but a cold `lab up` takes 4 to 10 minutes on an 8 GB Mac, and the first boot of a new simulator up to 25 |
+| Your other tabs | untouched (see Privacy)                                                                                                                   | none                                                                                                                                               |
 
 **Free-account limits.** The profile lasts **7 days**; `lab up` signs WebDriverAgent again
 when less than 24 hours are left (`--resign` deletes the build and signs again, but Xcode
@@ -635,7 +651,7 @@ alone, not for agents) turns it off, and the lab's output then says `signLock: "
 apps may fill them. sideload can lend the lab one of its slots (`sideload slot lend`) so WebDriverAgent fits, and takes
 it back with `sideload slot return`.
 
-*Borrowing.* A `lab up` that creates a new phone session has a `slot` step (after `phone` and the early look at the
+_Borrowing._ A `lab up` that creates a new phone session has a `slot` step (after `phone` and the early look at the
 signing lock, before the phone settings, the tunnel, Lab Focus and the session, so a stop there opens nothing on the phone).
 It lists the phone's apps once (`xcrun devicectl device info apps --bundle-id <bundle id>.xctrunner`, a second or two);
 a live session skips it. WebDriverAgent there: nothing more. Missing: the lab builds the runner when there is no build
@@ -652,8 +668,9 @@ the last line. A phone `lab up` **reuses a lend it already holds** instead of re
 in `lending` or `returning` with WebDriverAgent on the phone is settled by one `slot return` call (the runner is not
 uninstalled for that): the lend stands (`lent`) or the slot is back.
 
-*Giving back.* The lab writes down what it borrows in `state.slotLend`, with the sideload binary and
+_Giving back._ The lab writes down what it borrows in `state.slotLend`, with the sideload binary and
 `SIDELOAD_HOME` it used. The record is written before the lend and before the return, so a crash leaves it behind, and the lab gives the slot back:
+
 - at the **idle stop** (retried every tick, but not while sideload asked for a later retry, and, when sideload
   needs you to act, not until a lab command has run), and at **`lab down`** when the idle stop is not installed and
   loaded or the return had already started (a `slot` step right after `wda`; never a failure of `down`);
@@ -863,7 +880,7 @@ How it works:
 
 - `lab up` runs the shortcut in a new `focus` step, **before** it opens the lab's Safari tab (the Shortcuts app is left in
   front by the shortcut, and the tab is opened over it): `xcrun devicectl device process launch --device <saved UDID>
-  --payload-url 'shortcuts://run-shortcut?name=Lab%20Focus%20On' com.apple.shortcuts`. A session that is already open is kept
+--payload-url 'shortcuts://run-shortcut?name=Lab%20Focus%20On' com.apple.shortcuts`. A session that is already open is kept
   as it is and runs nothing. After `lab down` or `safari stop` the Shortcuts app is in front on the phone.
 - It is recorded in the restore ledger first (kind `focus`, [ADR 0007](docs/adr/0007-phone-settings-restore-ledger.md)) and put back with
   the Off shortcut at the same points as appearance and orientation. The lab **cannot read which Focus is on**, and
@@ -1037,7 +1054,7 @@ phone's passcode on the phone.
   is not seen until it completes, and a page that animates through the DOM never settles: the
   timeout then reports the activity it saw (`resources`, `mutations`, `sizeChanges`). If the
   browser has no `PerformanceObserver` or `MutationObserver` the output says `resourcesWatched:
-  false` or `domWatched: false`. `open --wait-for <css>` and `--settle` (also on `refresh`) run
+false` or `domWatched: false`. `open --wait-for <css>` and `--settle` (also on `refresh`) run
   these waits after the load and after `--reinject`, each with its own `--timeout`; a wait that
   fails still says `navigated: true` with the `url` and `title`. The output never carries page
   text.
@@ -1110,7 +1127,7 @@ phone's passcode on the phone.
   before this change gets the setting the next
   time you run `safari start` or `lab up`. Speed of `keys` now: see `docs/acceptance.md`.
 - **The first session is slow** (about 2 minutes) while WebDriverAgent is built; `safari
-  start` waits for it.
+start` waits for it.
 - **Xcode 27 has no Simulator.app.** `sim boot` opens Device Hub instead; the window is
   only a view, nothing depends on it.
 - **Console messages** depend on the target. On the **simulator** they come from Safari's

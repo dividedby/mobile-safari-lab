@@ -34,14 +34,14 @@ the whole `lab up`) is acceptance items 24 and 28.
   `launchctl kickstart`, ended with `launchctl kill TERM`). It runs `bin/lab-tunnel-host`
   (`lib/tunnel-host.js`): it starts the tool (argument list, no `--udid`, stdin from
   `/dev/null`), requires the first line to be `fd... <port>` within 30 s, asks `remote
-  rsd-info` and refuses any device whose `UniqueDeviceID` is not the saved phone's (without
+rsd-info` and refuses any device whose `UniqueDeviceID` is not the saved phone's (without
   `--udid` the tool can pick an Apple TV), serves the tunnel registry on `127.0.0.1`, and
   records `tunnel.json` (0600, atomic). It watches the tool and three TCP checks of the RSD
   port, and on any end (or SIGTERM) stops the phone's WebDriverAgent and the registry,
   restores the registry key and records `down` with a reason.
 - **An exception to the saved-UDID rule, and its substitute.** The lab otherwise passes the saved
   phone UDID to every device command ([CLAUDE.md](../../CLAUDE.md)). `pymobiledevice3 remote
-  start-tunnel` is run without `--udid`: remotepairingd knows the phone by an id of its own, not
+start-tunnel` is run without `--udid`: remotepairingd knows the phone by an id of its own, not
   the UDID. Instead the lab never trusts the device the
   tool happened to reach: `rsd-info`'s `UniqueDeviceID` must equal the saved UDID, or the tool is
   killed and the tunnel refused (`wrong-device`). Every other device command (`devicectl`,
@@ -134,6 +134,7 @@ listener; `rsd-info --native`, a userspace `rsd-info` and ten plain TCP connects
 device` came up in 30 s and the page commands worked over it.
 
 Rejected:
+
 - **Waiting for `start-tunnel --native --format json`** (doronz88/pymobiledevice3#2140, the record
   from the tunnel's own connection): no second connection at all, but it needs an upstream release,
   and the maintainer pointed to the existing commands.

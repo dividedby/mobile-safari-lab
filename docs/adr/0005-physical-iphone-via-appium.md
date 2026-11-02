@@ -53,7 +53,7 @@ is what shaped the design.
   - The first WDA start after a while may ask for the phone's passcode ("enable UI
     automation"); a timeout then means `passcode`.
 - **Team and bundle id are stored, not coded.** `lab phone setup --udid <UDID> --team <TEAMID>
-  [--bundle-id <id>]` validates the pair against the live phone and saves
+[--bundle-id <id>]` validates the pair against the live phone and saves
   `{udid, teamId, bundleId, wdaExpires?}` in the state file. The default bundle id is
   `com.dividedby.msl-wda-<first 4 characters of the team, lowercased>`. No team id, Apple ID or UDID
   appears in code or tests (fixtures use fake ones), so the repo stays publishable and a second
@@ -66,7 +66,7 @@ is what shaped the design.
     (plain `===`/`!==` comparisons, nothing the page can patch, since issue 101), and nothing else. **This is the one accepted
     exception**: the only code ever run in a page before it is known to be the lab's. A page that
     fails the check is not touched again and the start is refused.
-  - The verified page id is the *pinned page*. A token is planted in `window.name`, and the
+  - The verified page id is the _pinned page_. A token is planted in `window.name`, and the
     session goes to the native context, where it rests. In the native context the driver only
     records new page ids and never attaches, so tabs the owner opens or switches to are not read.
   - Every page command selects the pinned page, confirms the current context is it, runs its script
