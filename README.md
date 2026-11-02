@@ -1028,7 +1028,9 @@ phone's passcode on the phone.
   loading (an unfinished image that is hidden, or a lazy one outside the viewport or with no size,
   is not waited for; the output always has `skippedImages`, the number of those) and, for
   `--quiet` ms (100 to 10000, less than `--timeout`), no resource finished loading, the DOM did
-  not change and the page's scroll size did not change. Its first call
+  not change and the page's scroll size did not change. The wait itself always runs for at least
+  `--quiet`, which gives a navigation that long to start; if you expect one, `tap` and `click` take
+  `--navigates`, which waits for it. Its first call
   installs the observers in the page, so a page that never waits has none; they stay until the next
   navigation, after which the next `wait --settled` installs them again. A request still in flight
   is not seen until it completes, and a page that animates through the DOM never settles: the

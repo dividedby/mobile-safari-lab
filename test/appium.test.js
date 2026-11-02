@@ -6410,9 +6410,12 @@ test('tap --navigates to an allowed host follows the tab; to any other site it t
   assert.equal(out.navigated, true);
   assert.deepEqual(out.followed, ['https://b.test']);
   dv.pages[PAGE].els = { '#go': 1 };
-  dv.onNative = s => { if (s === 'mobile: tap') dv.pageNav(PAGE, 'https://elsewhere.test/x'); };
+  let tapped = false; // the tab leaves at the wait's first read, so the refusal comes from the wait and not from the tap's own clean-up
+  dv.onNative = s => { if (s === 'mobile: tap') tapped = true; };
+  dv.beforeExecute = s => { if (tapped && /document\.readyState, location\.href/.test(s)) { tapped = false; dv.pageNav(PAGE, 'https://elsewhere.test/x'); } };
   const e = await failing(safari.tap(['#go', '--navigates', '--timeout', '3000']));
   assert.equal(e.extra.needs, 'tab');
+  assert.equal(e.extra.tapped, '#go', 'the output still says what was done');
   assert.equal(loadState().deviceTab.tainted, true);
   neverUnsafe();
 });
