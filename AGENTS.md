@@ -275,10 +275,13 @@ safari source | safari ui | safari url | safari refresh
   A second move still ends the run with `needs: "tab"`.
 - Injected scripts start after load and only provide `GM_info`; they are lost on every navigation
   and refresh. State this limit in your report; if timing matters, say it needs a real-device check.
-- Other Safari extensions of the owner's can run in the lab's tab on the phone, but the Userscripts
-  app's scripts did not in one run (iOS 27.0.1, cable, 2026-10-27; cause unknown,
-  issue 102). To test a userscript on the
-  phone, `safari inject` the file; don't rely on the installed copy.
+- The owner's Safari extensions, the Userscripts app's scripts included, can run in the lab's tab on the
+  phone and change what you see. Installed scripts ran there on iOS 27.2 over Wi-Fi, including at
+  `document-start` (2026-11-01, [issue #8](https://github.com/dividedby/mobile-safari-lab/issues/8)). They did not in one earlier run (iOS 27.0.1, cable, 2026-10-27,
+  issue 102); the app wasn't loading scripts in any tab that day, the likely cause, though cable and
+  that iOS version weren't ruled out. If an installed script doesn't run, have the owner check the app first.
+  The installed copy is the only way to test `document-start`; `safari inject` runs after load. A script
+  that redirects needs `--allow-host` for the hosts it goes to, or it taints the run.
 - `inject` right after a navigation may run in the outgoing page and do nothing (seen once, not
   reproduced). `inject` watches for half a second afterwards and says so (`pageChanged: true` and a
   `warning`) when the page showing is no longer the document the script ran in; then run it again,

@@ -5,6 +5,14 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+### Fixed
+
+- The docs said the Userscripts app's scripts don't run in the lab's tab on the iPhone, so to test with `safari inject`
+  and not the installed copy, and that scripts that must run before the page draws aren't supported on the iPhone
+  ([issue #8](https://github.com/dividedby/mobile-safari-lab/issues/8)). Installed scripts did run there on iOS 27.2 over Wi-Fi, including at `document-start`; in the one earlier run
+  where they didn't, the app wasn't loading scripts in any tab that day. AGENTS.md, the README and the skill now say so,
+  to check the app first when one doesn't run, and that the installed copy is the way to test `document-start`.
+
 ### Added
 
 - An [Idea Inbox](https://github.com/dividedby/mobile-safari-lab/issues/6) for loose ideas, and `docs/agents/idea-inbox.md`

@@ -944,12 +944,14 @@ phone's passcode on the phone.
   `safari inject --clear` drops all (`cleared` is the count). Neither runs anything in the page,
   and each is refused with any other file or flag. App Store extensions (the
   Userscripts app, Tampermonkey) can't be installed in a simulator, and WebDriver sessions
-  start clean (like a private window, probably without extensions). Scripts that must run
-  before the page draws are not supported on the simulator or the iPhone. Other Safari
-  extensions of yours can inject into the lab's tab on the iPhone, but the Userscripts app's
-  scripts did not in one run (iOS 27.0.1, cable, 2026-10-27; cause unknown,
-  issue 102): test a userscript on the
-  phone with `safari inject`, not the installed copy. `safari inject` right after a navigation
+  start clean (like a private window, probably without extensions). `safari inject` can't run
+  a script before the page draws, on the simulator or the iPhone. On the iPhone your own Safari
+  extensions, the Userscripts app's scripts included, can run in the lab's tab, so the installed
+  copy is the way to test `document-start`: installed scripts ran there on iOS 27.2 over Wi-Fi
+  (2026-11-01, [issue #8](https://github.com/dividedby/mobile-safari-lab/issues/8)). They did not in one earlier run (iOS 27.0.1, cable, 2026-10-27, issue 102);
+  the app wasn't loading scripts in any tab that day, the likely cause, though cable and that iOS
+  version weren't ruled out. If an installed script doesn't run, check the app first. A script that
+  redirects needs `--allow-host` for the hosts it goes to, or it taints the run. `safari inject` right after a navigation
   may run in the outgoing page and do nothing (seen once, not reproduced): `inject` watches for
   half a second afterwards and reports `pageChanged: true` with a `warning` when the page showing
   is no longer the document the script ran in (run it again, unless the script navigates by
