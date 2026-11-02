@@ -131,6 +131,8 @@ safari tap button --text OK    # by exact visible text; --contains, --nth N (1-b
 safari tap --label "Share"     # the one native element in the web view with exactly this label
 safari wait <css> [--visible|--gone]   # until the element exists / is rendered / is removed or hidden; same selectors as tap; --timeout ms
 safari wait --settled          # until nothing has loaded, changed or resized for --quiet ms (500)
+safari tap 'a.next' --navigates # then waits until the page has changed (also on click; --timeout <ms>)
+safari back                     # the tab's previous page; waits until the page has changed (--timeout <ms>)
 safari keys "text"             # real key presses into the focused page field
 safari swipe up                # real scroll (or down)
 safari appearance light|dark   # iPhone only: the phone's light/dark mode; also `status`, `restore`
@@ -273,6 +275,11 @@ safari source | safari ui | safari url | safari refresh
 - `open` and `refresh` on the phone mark the tab again after the navigation. If the page list moves
   during that moment they wait for it to settle (up to 5 s) and retry once, saying `markRetried: true`.
   A second move still ends the run with `needs: "tab"`.
+- **Testing Back:** use `safari back`, not `eval 'history.back()'`: it refuses when there is nothing to go back to, waits until
+  the page has changed and reports `url`, so the next read can't show the page it left. **On the phone `open` adds no history:**
+  it replaces the lab's page, so `history.length` stays 1 and `history.back()` silently does nothing. Build the history with real
+  taps (`safari tap <css> --navigates`). The lab can only close a tab with one history entry, so after this `lab down` blanks the
+  tab instead, and its `human` step asks the owner to close it by hand: relay that. On the simulator `open` does add history.
 - Injected scripts start after load and only provide `GM_info`; they are lost on every navigation
   and refresh. State this limit in your report; if timing matters, say it needs a real-device check.
 - The owner's Safari extensions, the Userscripts app's scripts included, can run in the lab's tab on the
