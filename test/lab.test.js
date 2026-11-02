@@ -3003,6 +3003,21 @@ test('down honours a saved target of off', async () => {
   assert.deepEqual(app.fx.keyboard, { keyboardAutocorrection: true, keyboardPrediction: false });
 });
 
+test('down puts the step for a blanked tab in the top-level human, once, next to the keyboard step (#10)', async () => {
+  deviceDown();
+  await lab.up([]);
+  app.dv.pages[loadState().deviceTab.page].hist = 2; // history built with real taps: window.close() can't close it
+  app.fx.keyboardFail = 'refused';
+  const real = console.error;
+  console.error = () => {};
+  let out;
+  try { out = await lab.down([]); } finally { console.error = real; }
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(stepOf(out, 'session').blanked, true);
+  assert.match(out.human[0], /so it was blanked, not closed\. Close the blank tab on the phone by hand\./);
+  assert.deepEqual(out.human.slice(1), [KB], 'the keyboard step is there once');
+});
+
 test('a failed restore never fails down: it adds keyboardRestored false and the human step, and the teardown still finishes', async () => {
   const w = deviceDown({ procs: home => [{ pid: 7701, ppid: 1, command: wdaLine(home) }] });
   await lab.up([]);
