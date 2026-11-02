@@ -131,6 +131,7 @@ safari tap button --text OK    # by exact visible text; --contains, --nth N (1-b
 safari tap --label "Share"     # the one native element in the web view with exactly this label
 safari wait <css> [--visible|--gone]   # until the element exists / is rendered / is removed or hidden; same selectors as tap; --timeout ms
 safari wait --settled          # until nothing has loaded, changed or resized for --quiet ms (500)
+safari tap 'a.next' --navigates # then waits until the page has changed (also on click; --timeout <ms>)
 safari keys "text"             # real key presses into the focused page field
 safari swipe up                # real scroll (or down)
 safari appearance light|dark   # iPhone only: the phone's light/dark mode; also `status`, `restore`

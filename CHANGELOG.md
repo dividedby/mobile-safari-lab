@@ -7,6 +7,7 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ### Fixed
 
+- `safari wait --settled` could return before a navigation that was asked for had started, so the next read showed the old page with `ok: true` ([issue #9](https://github.com/dividedby/mobile-safari-lab/issues/9)). The tracker it uses stays in the page, so a page an earlier wait had watched read as quiet at once. The wait now always runs for at least `--quiet` itself, which gives a navigation that long to start. So a repeated `wait --settled` takes at least 500 ms.
 - The docs said the Userscripts app's scripts don't run in the lab's tab on the iPhone, so to test with `safari inject`
   and not the installed copy, and that scripts that must run before the page draws aren't supported on the iPhone
   ([issue #8](https://github.com/dividedby/mobile-safari-lab/issues/8)). Installed scripts did run there on iOS 27.2 over Wi-Fi, including at `document-start`; in the one earlier run
@@ -15,6 +16,7 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ### Added
 
+- `safari tap` and `click` take `--navigates [--timeout <ms>]` ([issue #9](https://github.com/dividedby/mobile-safari-lab/issues/9)): the command reads the page, acts, then waits until the page is a different document or address and fully loaded, and reports `navigated: true`, `url` and `elapsedMs`. A page that stays put is `ok: false` with `navigated: false`, and the output says the tap or click was sent. On the phone the reads go through the tab guard, so a site that isn't allowed is refused as ever, and the console and network collectors go back into the new page.
 - An [Idea Inbox](https://github.com/dividedby/mobile-safari-lab/issues/6) for loose ideas, and `docs/agents/idea-inbox.md`
   on how agents capture and drain it, after sideload's. AGENTS.md, CLAUDE.md and CONTRIBUTING.md point to it.
 - The repo is ready to be public: an MIT `LICENSE` (and `"license": "MIT"` in `package.json`), `CONTRIBUTING.md` (what

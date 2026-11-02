@@ -254,6 +254,7 @@ before(async () => {
         return fail('unknown error', `native lookup ${json.using} ${json.value}`, 500);
       }
       if (p === '/element/E1/value' && fx.valueFail) return webOnly() || fail('unknown error', fx.valueFail(json), 500); // fx.valueFail(body): the message the server gives
+      if (p === '/element/E1/click') fx.onClick?.();
       if (p.startsWith('/element/E1/')) return webOnly() || send(null);
       if (p === '/url' && req.method === 'POST') {
         const bad = webOnly();
@@ -6140,13 +6141,14 @@ test('wait --settled returns once the page has been quiet for --quiet, with what
   await start();
   fx.waitSeq = [{ idleMs: 100, watchedMs: 100 }, { idleMs: 200, watchedMs: 300, mutations: 5, resources: 2 }, { idleMs: 600, watchedMs: 900, mutations: 5, resources: 2, sizeChanges: 1 }];
   const out = await safari.wait(['--settled']);
-  assert.deepEqual({ ...out, elapsedMs: 0 }, { settled: true, quietMs: 500, elapsedMs: 0, polls: 3, activity: { resources: 2, mutations: 5, sizeChanges: 1 }, pendingImages: 0, skippedImages: 0 });
+  assert.ok(out.polls >= 3 && out.elapsedMs >= 500, 'the wait itself runs for --quiet (#9)');
+  assert.deepEqual({ ...out, elapsedMs: 0, polls: 3 }, { settled: true, quietMs: 500, elapsedMs: 0, polls: 3, activity: { resources: 2, mutations: 5, sizeChanges: 1 }, pendingImages: 0, skippedImages: 0 });
   assert.deepEqual(waitSelectCalls(), []);
-  assert.deepEqual(settleCalls().map(([, a]) => a), [[], [], []]);
+  assert.ok(settleCalls().every(([, a]) => a.length === 0));
   // --quiet is what is waited for; images, fonts and the document count too; the idle time counts from the install.
   fx.waitSeq = [{ complete: false, idleMs: 900 }, { pendingImages: 1, idleMs: 900 }, { fontsLoading: true, idleMs: 900 }, { idleMs: 900, watchedMs: 150 }, { idleMs: 900, watchedMs: 600 }];
   const second = await safari.wait(['--settled', '--quiet', '500']);
-  assert.equal(second.polls, 5);
+  assert.ok(second.polls >= 5);
   fx.waitSeq = [{ idleMs: 120, watchedMs: 120, resourcesWatched: false, observing: false }];
   const blind = await safari.wait(['--settled', '--quiet', '100']);
   assert.deepEqual([blind.resourcesWatched, blind.domWatched], [false, false]);
@@ -6336,6 +6338,107 @@ test('a device wait on a locked phone is needs unlock, and polls no more', async
   assert.equal(e.extra.needs, 'unlock');
   assert.equal(pageScripts().length, 1);
   neverUnsafe();
+});
+
+// #9: a navigation that was asked for must not be missed by the next read.
+test('wait --settled watches from its own start: a page long quiet does not pass on the first read (#9)', async () => {
+  await start();
+  const out = await safari.wait(['--settled', '--quiet', '100', '--timeout', '3000']); // the stand-in says quiet for a second already
+  assert.equal(out.settled, true);
+  assert.ok(out.polls >= 2, `polled ${out.polls} times`);
+  assert.ok(out.elapsedMs >= 100, `${out.elapsedMs} ms`);
+});
+
+test('a device wait --settled sees a navigation that starts while it watches, on a page an earlier wait already watched (#9)', async () => {
+  await startPhone();
+  await safari.wait(['--settled', '--quiet', '100', '--timeout', '1000']);
+  await new Promise(r => setTimeout(r, 150)); // the old document has been quiet for longer than --quiet
+  let n = 0;
+  dv.onExecute = () => { if (++n === 2) dv.pageNav(PAGE, 'https://example.com/next'); };
+  await safari.wait(['--settled', '--quiet', '100', '--timeout', '3000']);
+  dv.onExecute = null;
+  assert.equal((await safari.url([])).url, 'https://example.com/next');
+  neverUnsafe();
+});
+
+test('tap --navigates waits for a new document, reports its address and puts the collectors back (#9)', async () => {
+  await startPhone();
+  dv.pages[PAGE].els = { '#go': 1 };
+  dv.onNative = s => { if (s === 'mobile: tap') setTimeout(() => dv.pageNav(PAGE, 'https://example.com/next?token=SECRET'), 30); };
+  const out = await safari.tap(['#go', '--navigates', '--timeout', '3000']);
+  assert.equal(out.tapped, '#go');
+  assert.equal(out.navigated, true);
+  assert.doesNotMatch(out.url, /SECRET/, 'the address is redacted');
+  assert.match(out.url, /^https:\/\/example\.com\/next/);
+  assert.ok(Number.isInteger(out.elapsedMs));
+  const tapAt = lastIndex(([, , b]) => b?.script === 'mobile: tap');
+  const hooks = dlog.findIndex(([, , b], i) => i > tapAt && typeof b?.script === 'string' && b.script.includes('window.__mslConsole'));
+  assert.ok(hooks > tapAt, 'the collectors went into the new document');
+  neverUnsafe();
+});
+
+test('tap --navigates reads the document before the touch, and counts a change of address in the same document (#9)', async () => {
+  await startPhone();
+  dv.pages[PAGE].els = { '#go': 1 };
+  const docRead = i => typeof dlog[i]?.[2]?.script === 'string' && /performance\.timeOrigin, document\.readyState/.test(dlog[i][2].script);
+  dv.onNative = s => { if (s === 'mobile: tap') dv.pages[PAGE].href = 'https://example.com/?same#section'; };
+  const out = await safari.tap(['#go', '--navigates', '--timeout', '3000']);
+  assert.equal(out.navigated, true);
+  const tapAt = lastIndex(([, , b]) => b?.script === 'mobile: tap');
+  assert.ok(dlog.slice(0, tapAt).some((_, i) => docRead(i)), 'the document was read before the touch');
+  neverUnsafe();
+});
+
+test('tap --navigates on a page that stays put fails at --timeout, says the tap was sent, and leaves the session good (#9)', async () => {
+  await startPhone();
+  dv.pages[PAGE].els = { '#go': 1 };
+  const e = await failing(safari.tap(['#go', '--navigates', '--timeout', '200']));
+  assert.match(e.message, /^timed out after 200 ms waiting for the page to change \(the tap was sent; the page is still the same document at the same address\)/);
+  assert.equal(e.extra.navigated, false);
+  assert.equal(e.extra.tapped, '#go');
+  assert.equal(e.extra.needs, undefined);
+  assert.equal(loadState().deviceTab.tainted, undefined);
+  assert.equal((await safari.eval(['1 + 1'])).value, 2);
+  neverUnsafe();
+});
+
+test('tap --navigates to an allowed host follows the tab; to any other site it taints as ever (#9)', async () => {
+  await startPhone(false, ['b.test']);
+  dv.pages[PAGE].els = { '#go': 1 };
+  dv.onNative = s => { if (s === 'mobile: tap') dv.pageNav(PAGE, 'https://b.test/x'); };
+  const out = await safari.tap(['#go', '--navigates', '--timeout', '3000']);
+  assert.equal(out.navigated, true);
+  assert.deepEqual(out.followed, ['https://b.test']);
+  dv.pages[PAGE].els = { '#go': 1 };
+  dv.onNative = s => { if (s === 'mobile: tap') dv.pageNav(PAGE, 'https://elsewhere.test/x'); };
+  const e = await failing(safari.tap(['#go', '--navigates', '--timeout', '3000']));
+  assert.equal(e.extra.needs, 'tab');
+  assert.equal(loadState().deviceTab.tainted, true);
+  neverUnsafe();
+});
+
+test('click --navigates waits out reads of the old page on the simulator (#9)', async () => {
+  await start();
+  fx.selectCount = 1;
+  fx.onClick = () => { fx.pending = { origin: fx.doc.origin + 1, ready: 'complete', href: 'https://example.com/next' }; fx.staleReads = 2; };
+  const out = await safari.click(['#go', '--navigates', '--timeout', '3000']);
+  assert.equal(out.clicked, '#go');
+  assert.equal(out.navigated, true);
+  assert.equal(out.url, 'https://example.com/next');
+  assert.ok(out.polls >= 3, `polled ${out.polls} times`);
+});
+
+test('--navigates and its --timeout are checked before anything is sent (#9)', async () => {
+  await start();
+  log.length = 0;
+  for (const [cmd, argv, re] of [
+    ['tap', ['#go', '--timeout', '500'], /tap: --timeout goes with --navigates/],
+    ['click', ['#go', '--timeout', '500'], /click: --timeout goes with --navigates/],
+    ['tap', ['#go', '--navigates', '--timeout', '50'], /--timeout must be a whole number of milliseconds from 100 to 60000/],
+    ['click', ['#go', '--navigates', '--timeout', 'x'], /--timeout must be a whole number of milliseconds from 100 to 60000/],
+    ['tap', ['--label', 'Share', '--timeout', '500'], /tap: --timeout goes with --navigates/],
+  ]) await assert.rejects(safari[cmd](argv), re, argv.join(' '));
+  assert.deepEqual(log, [], 'nothing reached the session');
 });
 
 test('a device wait does not look at the screen: no visibility check, no native call', async () => {

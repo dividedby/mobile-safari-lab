@@ -350,6 +350,7 @@ safari tap button --text 'Continue'              # by visible text (exact, white
 safari click li --nth 3            # the third match of a selector (also on tap and type)
 safari tap --shadow x-app x-card button          # into open shadow roots: every argument is a selector, the last is the target
 safari tap --label 'Share'         # the one native element in the web view with exactly this accessibility label (see `safari ui`)
+safari tap 'a.next' --navigates     # then waits until the page is a different document or address, fully loaded (--timeout <ms>, 10 s by default; also on click)
 safari wait '.card' --visible      # until the element exists (default), is rendered (--visible) or is removed or hidden (--gone); same selectors as tap; --timeout <ms>
 safari wait --settled              # until the page has been quiet for --quiet <ms> (default 500): nothing loaded, changed or resized; use it instead of `sleep` before `shot`
 safari keys 'Hello'                # real key events into the focused page field (waits for the keyboard);
