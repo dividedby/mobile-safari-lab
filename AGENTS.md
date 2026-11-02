@@ -280,7 +280,7 @@ safari source | safari ui | safari url | safari refresh
   `document-start` (2026-11-01, [issue #8](https://github.com/dividedby/mobile-safari-lab/issues/8)). They did not in one earlier run (iOS 27.0.1, cable, 2026-10-27,
   issue 102); the app wasn't loading scripts in any tab that day, the likely cause, though cable and
   that iOS version weren't ruled out. If an installed script doesn't run, have the owner check the app first.
-  The installed copy is the only way to test `document-start`; `safari inject` runs after load. A script
+  The installed copy is the way to test `document-start`; `safari inject` runs after load. A script
   that redirects needs `--allow-host` for the hosts it goes to, or it taints the run.
 - `inject` right after a navigation may run in the outgoing page and do nothing (seen once, not
   reproduced). `inject` watches for half a second afterwards and says so (`pageChanged: true` and a
