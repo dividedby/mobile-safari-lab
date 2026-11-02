@@ -290,6 +290,8 @@ before(async () => {
           if (fx.storageThrow) return fail('javascript error', fx.storageThrow, 500); // the page makes the script throw outside its own try
           return send(runStorageScript(s, json.args));
         }
+        if (s === 'return history.length;') return send(fx.historyLength ?? 1);
+        if (s.includes('history.back()')) { fx.onBack?.(); return send(true); }
         if (s.includes('performance.timeOrigin')) {
           if (fx.pending && fx.staleReads > 0) fx.staleReads--;
           else if (fx.pending) { fx.doc = fx.pending; fx.pending = null; }
@@ -6438,6 +6440,117 @@ test('--navigates and its --timeout are checked before anything is sent (#9)', a
     ['click', ['#go', '--navigates', '--timeout', 'x'], /--timeout must be a whole number of milliseconds from 100 to 60000/],
     ['tap', ['--label', 'Share', '--timeout', '500'], /tap: --timeout goes with --navigates/],
   ]) await assert.rejects(safari[cmd](argv), re, argv.join(' '));
+  assert.deepEqual(log, [], 'nothing reached the session');
+});
+
+// --- back (#10) ---
+const backFrom = (page, ...entries) => { page.hist = entries.length + 1; page.backStack = entries; };
+
+test('back goes to the previous page, keeps the marker, reports the address and puts the collectors back (#10)', async () => {
+  await startPhone();
+  const page = dv.pages[PAGE];
+  backFrom(page, 'https://example.com/a?token=SECRET');
+  const out = await safari.back([]);
+  assert.equal(out.back, true);
+  assert.equal(out.navigated, true);
+  assert.match(out.url, /^https:\/\/example\.com\/a/);
+  assert.doesNotMatch(out.url, /SECRET/);
+  assert.equal(out.historyLength, 2);
+  assert.ok(executes().some(b => /history\.back\(\)/.test(b.script) && b.script.startsWith('if (window.name !== ')), 'sent through the tab guard');
+  assert.equal(posts('/back').length, 0, 'never WebDriver /back: it goes to whichever page is current');
+  assert.equal(page.win.name, loadState().deviceTab.token);
+  const backAt = lastIndex(([, , b]) => /history\.back\(\)/.test(b?.script ?? ''));
+  assert.ok(lastIndex(([, , b]) => (b?.script ?? '').includes('window.__mslConsole')) > backAt, 'the collectors went into the page');
+  assert.equal(dv.context, 'NATIVE_APP');
+  neverUnsafe();
+});
+
+test('back with nothing to go back to is refused, says why, and sends no back (#10)', async () => {
+  await startPhone();
+  const e = await failing(safari.back([]));
+  assert.match(e.message, /^back: there is nothing to go back to \(history\.length is 1\); `open` replaces the page and adds no history/);
+  assert.match(e.message, /safari tap <css> --navigates/);
+  assert.equal(e.extra?.needs, undefined);
+  assert.ok(!executes().some(b => /history\.back\(\)/.test(b.script)));
+  assert.equal(loadState().deviceTab.tainted, undefined);
+  neverUnsafe();
+});
+
+test('back to a site the tab already visited puts the marker back there (#10)', async () => {
+  await startPhone();
+  await safari.open(['https://other.test/b']);
+  backFrom(dv.pages[PAGE], 'https://example.com/a');
+  const out = await safari.back([]);
+  assert.equal(out.navigated, true);
+  assert.equal(dv.pages[PAGE].win.name, loadState().deviceTab.token, 'Safari clears window.name across sites; the lab marks it again');
+  assert.equal(loadState().deviceTab.origin, 'https://example.com');
+  neverUnsafe();
+});
+
+test('back to a site the tab never visited taints and writes no marker there (#10)', async () => {
+  await startPhone();
+  backFrom(dv.pages[PAGE], 'https://elsewhere.test/x');
+  const e = await failing(safari.back([]));
+  assert.equal(e.extra.needs, 'tab');
+  assert.equal(loadState().deviceTab.tainted, true);
+  assert.equal(dv.pages[PAGE].win.name, '', 'no marker on a foreign page');
+  neverUnsafe();
+});
+
+test('back to an allowed host is accepted (#10)', async () => {
+  await startPhone(false, ['b.test']);
+  backFrom(dv.pages[PAGE], 'https://b.test/x');
+  assert.equal((await safari.back([])).navigated, true);
+  assert.equal(loadState().deviceTab.origin, 'https://b.test');
+  neverUnsafe();
+});
+
+test('a back that only changes the fragment counts, with no new document (#10)', async () => {
+  await startPhone();
+  const page = dv.pages[PAGE];
+  page.hist = 2;
+  page.backStack = [{ sameDocument: `${page.href}#earlier` }];
+  const origin = page.origin;
+  const out = await safari.back(['--timeout', '2000']);
+  assert.equal(out.navigated, true);
+  assert.match(out.url, /#earlier$/);
+  assert.equal(page.origin, origin, 'the same document');
+  neverUnsafe();
+});
+
+test('a back that goes nowhere fails at --timeout, says it was sent, and leaves the session good (#10)', async () => {
+  await startPhone();
+  dv.pages[PAGE].hist = 2; // only forward entries, or the page swallowed it
+  const e = await failing(safari.back(['--timeout', '200']));
+  assert.match(e.message, /^timed out after 200 ms waiting for the page to go back \(the back was sent; the page is still the same document at the same address\)/);
+  assert.equal(e.extra.navigated, false);
+  assert.equal(e.extra.needs, undefined);
+  assert.equal(loadState().deviceTab.tainted, undefined);
+  assert.equal(dv.context, 'NATIVE_APP');
+  assert.equal((await safari.eval(['1 + 1'])).value, 2);
+  neverUnsafe();
+});
+
+test('back on the simulator waits out reads of the old page (#10)', async () => {
+  await start();
+  fx.historyLength = 3;
+  fx.onBack = () => { fx.pending = { origin: fx.doc.origin + 1, ready: 'complete', href: 'https://example.com/a' }; fx.staleReads = 2; };
+  const out = await safari.back([]);
+  assert.deepEqual([out.back, out.navigated, out.url, out.historyLength], [true, true, 'https://example.com/a', 3]);
+  fx.historyLength = 1;
+  assert.match((await failing(safari.back([]))).message, /nothing to go back to/);
+});
+
+test('back refuses bad arguments before anything is sent (#10)', async () => {
+  await start();
+  log.length = 0;
+  for (const [argv, re] of [
+    [['--timeout', '50'], /--timeout must be a whole number of milliseconds from 100 to 60000/],
+    [['--timeout'], /--timeout needs a value/],
+    [['--nope', '1'], /usage: safari back/],
+    [['--nope'], /--nope needs a value/],
+    [['x'], /usage: safari back/],
+  ]) await assert.rejects(safari.back(argv), re, argv.join(' '));
   assert.deepEqual(log, [], 'nothing reached the session');
 });
 
