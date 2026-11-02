@@ -275,10 +275,11 @@ safari source | safari ui | safari url | safari refresh
 - `open` and `refresh` on the phone mark the tab again after the navigation. If the page list moves
   during that moment they wait for it to settle (up to 5 s) and retry once, saying `markRetried: true`.
   A second move still ends the run with `needs: "tab"`.
-- **`open` adds no history:** it replaces the lab's page, so `history.length` stays 1 and `history.back()` silently does
-  nothing. To test Back, build the history with real taps (`safari tap <css> --navigates`), then `safari back`, which refuses
-  when there is nothing to go back to. On the phone the lab can only close a tab with one history entry, so after this `lab down`
-  blanks the tab instead, and its `human` step asks the owner to close it by hand: relay that.
+- **Testing Back:** use `safari back`, not `eval 'history.back()'`: it refuses when there is nothing to go back to, waits until
+  the page has changed and reports `url`, so the next read can't show the page it left. **On the phone `open` adds no history:**
+  it replaces the lab's page, so `history.length` stays 1 and `history.back()` silently does nothing. Build the history with real
+  taps (`safari tap <css> --navigates`). The lab can only close a tab with one history entry, so after this `lab down` blanks the
+  tab instead, and its `human` step asks the owner to close it by hand: relay that. On the simulator `open` does add history.
 - Injected scripts start after load and only provide `GM_info`; they are lost on every navigation
   and refresh. State this limit in your report; if timing matters, say it needs a real-device check.
 - The owner's Safari extensions, the Userscripts app's scripts included, can run in the lab's tab on the

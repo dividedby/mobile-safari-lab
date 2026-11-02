@@ -6471,7 +6471,7 @@ test('back goes to the previous page, keeps the marker, reports the address and 
 test('back with nothing to go back to is refused, says why, and sends no back (#10)', async () => {
   await startPhone();
   const e = await failing(safari.back([]));
-  assert.match(e.message, /^back: there is nothing to go back to \(history\.length is 1\); `open` replaces the page and adds no history/);
+  assert.match(e.message, /^back: there is nothing to go back to \(history\.length is 1\); on the phone `open` replaces the page and adds no history/);
   assert.match(e.message, /safari tap <css> --navigates/);
   assert.equal(e.extra?.needs, undefined);
   assert.ok(!executes().some(b => /history\.back\(\)/.test(b.script)));
@@ -6525,7 +6525,7 @@ test('a back that goes nowhere fails at --timeout, says it was sent, and leaves 
   await startPhone();
   dv.pages[PAGE].hist = 2; // only forward entries, or the page swallowed it
   const e = await failing(safari.back(['--timeout', '200']));
-  assert.match(e.message, /^timed out after 200 ms waiting for the page to go back \(the back was sent; the page is still the same document at the same address\)/);
+  assert.match(e.message, /^timed out after 200 ms waiting for the page to go back \(the back was sent; the page did not change, or the new one has not finished loading\)/);
   assert.equal(e.extra.navigated, false);
   assert.equal(e.extra.needs, undefined);
   assert.equal(loadState().deviceTab.tainted, undefined);
@@ -6541,7 +6541,7 @@ test('back on the simulator waits out reads of the old page (#10)', async () => 
   const out = await safari.back([]);
   assert.deepEqual([out.back, out.navigated, out.url, out.historyLength], [true, true, 'https://example.com/a', 3]);
   fx.historyLength = 1;
-  assert.match((await failing(safari.back([]))).message, /nothing to go back to/);
+  assert.equal((await failing(safari.back([]))).message, 'back: there is nothing to go back to (history.length is 1)', 'on the simulator `open` does add history');
 });
 
 test('back refuses bad arguments before anything is sent (#10)', async () => {
