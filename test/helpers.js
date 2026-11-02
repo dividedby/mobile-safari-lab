@@ -313,7 +313,15 @@ function runPage(dv, page, script, args) {
     querySelectorAll: css => (css.startsWith('[aria-label^=') ? (page.probeLabel ? [{ remove: () => { page.probeLabel = null; page.probesCleared = (page.probesCleared ?? 0) + 1; } }] : []) : page.invalid?.includes(css) ? (() => { throw new SyntaxError('not a valid selector'); })() : page.texts?.[css] ? page.texts[css].map((text, i) => textEl(css, i, text, page.texts)) : Array.from({ length: page.els[css] ?? 0 }, (_, i) => el(i ? `${css}[${i}]` : css))),
     querySelector: css => (css.startsWith('[aria-label=') ? { remove: () => { page.probeLabel = null; } } : page.els[css] ? el(css) : null),
   };
-  const history = { get length() { return page.hist; } };
+  // `page.backStack`: where history.back() goes, last entry first (an address, or { sameDocument: address } for a fragment); empty: it does nothing.
+  const history = {
+    get length() { return page.hist; },
+    back() {
+      const to = page.backStack?.pop();
+      if (to?.sameDocument) page.href = to.sameDocument;
+      else if (to) navigate(dv, page, to);
+    },
+  };
   const fakeConsole = { error() {}, warn() {}, log() {} };
   // Resource Timing: `page.resources` are the browser's entries; an observer with `buffered` is handed them at once and told of later ones.
   const navEntry = { name: page.href, entryType: 'navigation', initiatorType: 'navigation', startTime: 0, duration: 85, transferSize: 4000, encodedBodySize: 3500, decodedBodySize: 9000, responseStatus: 200, nextHopProtocol: 'h2', serverTiming: [] };

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The page in Mobile Safari: start, open, refresh, eval, inject, click, type, tap, wait, keys,
+// The page in Mobile Safari: start, open, refresh, back, eval, inject, click, type, tap, wait, keys,
 // swipe, ui, source, shot, console, network, url, appearance and orientation (iPhone only, through
 // devicectl, restored at the end), stop. Everything else runs through Appium, on the
 // simulator or the saved iPhone (`start --target auto|device|simulator`, `--device <UDID>`);
@@ -16,6 +16,7 @@ const usage = {
     start: 'safari start [--target auto|device|simulator] [--device <UDID>] [--port N] [--allow-host <host>]...  (open a session; --allow-host names a host the lab may follow its phone tab to when the page goes there, http and https, exact match, up to 10; any other site still ends the session\'s trust in the tab)',
     open: 'safari open <http(s) URL> [--reinject] [--wait-for <css>] [--settle] [--timeout <ms>] [--storage <key=value>]...  (load the page, wait for the new document; then for the element, and/or for the page to settle; --storage sets localStorage on the URL\'s origin first)',
     refresh: 'safari refresh [--reinject] [--wait-for <css>] [--settle] [--timeout <ms>]  (reload, wait for the new document; then as open)',
+    back: 'safari back [--timeout <ms>]  (the tab\'s previous page, like the Back button; waits until the page has changed. On the phone `open` adds no history: build it with real taps)',
     eval: "safari eval '<js>' [--timeout <ms>]  (run JavaScript in the page; several statements need `return`; a Promise is awaited, 10 s by default)",
     inject: 'safari inject <file.user.js>  or  safari inject --forget <file.user.js>  or  safari inject --clear  (run a userscript in the page and record it for --reinject; --forget drops one recorded file, --clear all of them; neither runs anything in the page)',
     click: 'safari click [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--navigates [--timeout <ms>]] [--]  (a script click on the element; --shadow: every argument is a selector, the last is the target; --navigates: then wait until the page has changed)',
