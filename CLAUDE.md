@@ -31,3 +31,10 @@ cloud sessions can't run `xcrun`, so say what was and wasn't run on the Mac.
 Issues: GitHub issues in `dividedby/mobile-safari-lab` (via `gh api` REST routes). A loose idea goes to the top of the
 [Idea Inbox](https://github.com/dividedby/mobile-safari-lab/issues/6), not scoped yet; to capture or drain one, see
 `docs/agents/idea-inbox.md`.
+
+## Code style
+
+Formatting uses each tool's standard defaults, the same across all `dividedby` repos. Don't add style options or format by hand. Files format on edit through the post-edit hook.
+
+- **JS, TS, HTML, CSS, JSON, Markdown, YAML:** Prettier defaults. Run `pnpm format`, or `pnpm format:check` to check.
+- **Shell:** `shfmt` with 2-space indentation, per Google's Shell Style Guide. Set in `.editorconfig`.
