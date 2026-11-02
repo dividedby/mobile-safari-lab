@@ -30,12 +30,12 @@ session gets a working Safari with one command and nobody at the Mac":
   or the first non-Cellar `node` symlink on `PATH`, when it leads to the node running the
   install; otherwise the running node, resolved. Never the versioned Cellar path. A node
   major upgrade (or moving node) may still need `lab service install` again; `lab service
-  status` reports the recorded `node` and flags one that no longer exists.
+status` reports the recorded `node` and flags one that no longer exists.
 - **`bin/lab` is a third entry point**, not more verbs on `sim` and `safari`. Health spans
   launchd, simctl, Appium and the session, and imports both `sim.js` and `safari.js`; a
   separate tool keeps their verbs and imports as they were.
 - **`lab up` is idempotent and reports each step** (`lease`, `prerequisites`, `appium`,
-  `simulator`, `session`, `open`) as what it *found* and what it *did*. Recovery is
+  `simulator`, `session`, `open`) as what it _found_ and what it _did_. Recovery is
   **recreate, not repair**: if the recorded session fails a probe (in Safari's page, then
   `GET /url`), the stale session is deleted (best effort), the state cleared and a new
   session created (about 1 to 2 minutes). One code path then covers all four failure modes

@@ -29,13 +29,13 @@ The live spike of 2026-10-23 (iPhone, iOS 27.0.1, over Wi-Fi, Xcode 27 `devicect
 ## Decision
 
 - **Mechanism: `devicectl`, argument lists only.** Every call is `xcrun devicectl ... --device <saved
-  UDID> --json-output <file>`, bounded (20 s), the JSON parsed from the file the way the rest of
+UDID> --json-output <file>`, bounded (20 s), the JSON parsed from the file the way the rest of
   `lib/phone.js` does. `settings appearance` is given `--mode` only, because it can also change text
   size, contrast and the Liquid Glass look. The WebDriverAgent route (`mobile: setAppearance`, which falls back
   to a Siri command when the WDA call throws) is not used. Phone only: a simulator session is refused with a
   message; `sim appearance` is unchanged.
 - **A ledger, `state.phoneRestore`** (`lib/phone-restore.js`): `{udid, appearance?: {prior, set, at},
-  orientation?: {prior: {deviceOrientation, nonFlat}, set, at}}`, validated like the saved phone (a damaged
+orientation?: {prior: {deviceOrientation, nonFlat}, set, at}}`, validated like the saved phone (a damaged
   record names `lab phone restore --forget`). Its rules, each of them a test:
   1. **The entry is written before the change is sent**, so a crash between the two restores to a value the
      phone already had.
@@ -72,7 +72,7 @@ The live spike of 2026-10-23 (iPhone, iOS 27.0.1, over Wi-Fi, Xcode 27 `devicect
   the command created; a restore keeps its entry and says to run `lab phone restore` after turning the lock off.
   `deviceIsOrientationLocked` is not trusted.
 - **Where it is used.** `safari appearance light|dark|restore|status`, `safari orientation
-  portrait|landscape|restore|status` (landscape is `landscapeLeft`) and `lab up --appearance --orientation`
+portrait|landscape|restore|status` (landscape is `landscapeLeft`) and `lab up --appearance --orientation`
   (applied after the session exists). They take the lease like every `safari` command and need an open
   session, although `devicectl` itself does not.
 
@@ -122,7 +122,7 @@ How the rules read for a kind that cannot be read (`blind: true` in the table):
 - **Rule 1 holds**: the entry `{prior: "unknown", set: "on", at}` is written before the shortcut is launched. A launch that
   was refused (not delivered) removes an entry the call created; one that timed out keeps it, since it may have run.
 - **Rules 2 and 4 cannot hold**: there is no prior to read and no value to compare, so the lab does not refuse the change and
-  does not notice an owner who turned the Focus off or on by hand. The prior is *assumed* off: the restore runs Off and
+  does not notice an owner who turned the Focus off or on by hand. The prior is _assumed_ off: the restore runs Off and
   reports `restoredExactly: false` with a note (so it also turns the Focus off if the owner had it on before the run).
 - **Rule 5 changes**: there is no read-back, so the entry is cleared when the Off launch was delivered. `devicectl` confirms
   the launch, not the effect (`verified: false` in `lab up`'s `focus` block; the live acceptance checks the effect).

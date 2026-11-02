@@ -28,11 +28,11 @@ Three tools, all in `~/repos/mobile-safari-lab/bin`, normally on PATH, each prin
 
 ## Pick a target
 
-| Use | When |
-| --- | --- |
-| `--target device` | The task says iPhone or real device; the owner's extensions, the real WebKit build, GPU, fonts or network matter; the Mac is short on memory. |
-| `--target simulator` | A clean, logged-out profile (the default; `--profile configured` only when the task needs a signed-in user the owner set up); dark mode or status-bar control; identical screenshots every run; the phone isn't saved, reachable or unlocked and nobody is there to fix it. |
-| `--target auto` (default) | Anything else: the phone when one is saved, reachable and unlocked; the simulator when no phone is saved. A saved phone that can't be used fails with a `needs`; pass `--target simulator` to skip it. |
+| Use                       | When                                                                                                                                                                                                                                                                        |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--target device`         | The task says iPhone or real device; the owner's extensions, the real WebKit build, GPU, fonts or network matter; the Mac is short on memory.                                                                                                                               |
+| `--target simulator`      | A clean, logged-out profile (the default; `--profile configured` only when the task needs a signed-in user the owner set up); dark mode or status-bar control; identical screenshots every run; the phone isn't saved, reachable or unlocked and nobody is there to fix it. |
+| `--target auto` (default) | Anything else: the phone when one is saved, reachable and unlocked; the simulator when no phone is saved. A saved phone that can't be used fails with a `needs`; pass `--target simulator` to skip it.                                                                      |
 
 ## Workflow
 
