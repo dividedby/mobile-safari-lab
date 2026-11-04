@@ -3755,6 +3755,35 @@ test("a cable session is asked about as before, tunnel record or not", async () 
   assert.ok(onSession(first.session, "/contexts").length >= 1, "asked");
 });
 
+test("up over Wi-Fi when Xcode refuses the deployment target: needs xcode-update, nothing started, and down asks nothing about the keyboard (#17)", async () => {
+  const t = tunnelWorld();
+  deviceWorld(WIFI, {
+    extra: (cmd, args) =>
+      cmd === "xcodebuild"
+        ? {
+            code: 65,
+            stderr:
+              "error: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 27.2, but the range of supported deployment target versions is 15.0 to 27.0.x.",
+          }
+        : t.extra(cmd, args),
+  }); // no signed build yet: the lab builds one first
+  savePhone();
+  const out = await lab.up(["--target", "device"]);
+  assert.equal(out.ok, false);
+  assert.equal(out.failedStep, "session");
+  assert.equal(out.needs, "xcode-update");
+  assert.match(out.human.join(" "), /Update Xcode/);
+  assert.equal(t.spawned.length, 0, "WebDriverAgent never started");
+  assert.equal(
+    loadState().keyboardPending,
+    undefined,
+    "it never ran, so the keyboard settings were not touched",
+  );
+  const down = await lab.down([]);
+  assert.equal(down.keyboardRestored, undefined);
+  assert.ok(!(down.human ?? []).includes(phone.KEYBOARD_HUMAN));
+});
+
 test("a Wi-Fi session start renews the lease around the WebDriverAgent build, after the launch and before the create (the tunnel wait renews it too, but a tunnel already up has none)", async () => {
   const t = tunnelWorld();
   const events = [];

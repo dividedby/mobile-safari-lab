@@ -434,3 +434,13 @@ session or phone tab at the tick, an unreachable phone, a simulator the lab boot
 ## Result: 2026-10-20, item 22 on a reset simulator (before the WDA budget fix)
 
 Clean simulator after `sim reset`. (1) The first boot after the reset took 553 s: pass. (3) Re-attaching to a cut `bootstatus` piece: pass (it re-attached). (6) `lab up` failed twice, then worked: run 1 failed with `got no answer in 420s` and the lab's WebDriverAgent retry never fired (Appium's own error had not arrived: `wdaLaunchTimeout` 270 s is polled `270000 / 500` = 540 times about 1.15 s apart, about 620 s, then xcuitest's `wdaStartupRetries` 2 with 10 s between; the 270 + 60 + 30 < 420 sum was wrong); run 2 failed with `The remote debugger returned 4 web applications, but none of them had pages` (not retried: only "did not return any connected web applications" was); run 3 came up in 110 s. `sim shot` returned `scale: null` while AXe's tree was not ready. The fix is `wdaLaunchTimeout` 30 s with 2 attempts, `wdaConnectionTimeout` 90 s (worst case 370 s by the real formula), the no-pages retry and the `sim shot` scale fallback. Item 22 stays unchecked until it is run again with these.
+
+## Result: 2026-11-04, a phone newer than Xcode's iOS SDK (issue #17)
+
+iPhone on iOS 27.2, Xcode 27.0 with only the `iphoneos27.0` SDK, against `https://example.com`.
+
+- **Wi-Fi, 15:27 CT, no WebDriverAgent build:** `lab up --target device` passed; the `session` step took 44 s. The lab built with `IPHONEOS_DEPLOYMENT_TARGET=27.0` and started the runner with the same value. `safari eval`, `safari tap`, `safari shot --page` and `safari console` worked. `lab down` was `ok: true` with `keyboardRestored: true`.
+- **Cable, 15:31 CT:** `lab up --target device` passed; the `session` step took 45 s. Appium got `appium:platformVersion` `27.0`, passed `IPHONEOS_DEPLOYMENT_TARGET=27.0` to its xcodebuild, and reported `TEST BUILD SUCCEEDED`. The same page commands worked, and `lab down` was `ok: true` with `keyboardRestored: true`.
+- **Unsigned build with no device:** target 27.2 fails with exit 65 and the deployment target error, which `classify` reads as `xcode-update`; target 27.0 succeeds.
+
+Not run live: `needs: xcode-update` itself (the cap was enough here), a failed build over Wi-Fi with the new keyboard mark, and a phone a whole major version ahead of Xcode.
