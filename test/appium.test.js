@@ -13916,11 +13916,21 @@ test("a guard answer of 3 that the guard could not have given (no list, or after
 });
 
 test("safari start on the simulator is refused while it is off, before Appium is asked (#14)", async () => {
-  saveState({ simulatorAllowed: null, udid: U, phone: null });
+  saveState({
+    simulatorAllowed: null,
+    udid: U,
+    phone: null,
+    lastTarget: "device",
+  });
   fakeRunner();
   for (const args of [["--target", "simulator"], []])
     await assert.rejects(
       safari.start(args),
       (e) => e.extra?.needs === "simulator-off",
     );
+  assert.equal(
+    loadState().lastTarget,
+    "device",
+    "a refused start changes nothing",
+  );
 });
