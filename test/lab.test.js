@@ -1104,10 +1104,10 @@ test("down ends the session, shuts the simulator down by its UDID, quits the win
       "session",
       "wda",
       "tunnel",
-      "simulator",
-      "window",
       "safaridriver",
       "appium",
+      "simulator",
+      "window",
       "release",
     ],
   );
@@ -1339,6 +1339,25 @@ test("down ends a --device session and stops the safaridriver the lab started, e
   assert.equal(loadState().session, undefined);
 });
 
+test("down stops Appium before it shuts the simulator: a session start still running in Appium can't boot it again (#17)", async () => {
+  let appiumLoadedAtShutdown = null;
+  const w = world({
+    onShutdown: () => {
+      appiumLoadedAtShutdown = w.loaded;
+    },
+  });
+  await lab.up([]);
+  const out = await lab.down([]);
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(
+    appiumLoadedAtShutdown,
+    false,
+    "Appium was stopped when the shutdown was sent",
+  );
+  assert.equal(sim.state, "Shutdown");
+  assert.equal(stepOf(out, "simulator").did, "shut down");
+});
+
 test("a step that fails does not stop the later ones, and keeps the lease", async () => {
   const w = world({ shutdownWorks: false });
   await lab.up([]);
@@ -1357,10 +1376,10 @@ test("a step that fails does not stop the later ones, and keeps the lease", asyn
       "session",
       "wda",
       "tunnel",
-      "simulator",
-      "window",
       "safaridriver",
       "appium",
+      "simulator",
+      "window",
     ],
   );
   assert.match(stepOf(out, "simulator").error, /still Booted/);
@@ -1536,10 +1555,12 @@ test("down stops the WebDriverAgent xcodebuild Appium started and a simctl diagn
   await lab.up([]);
   const out = await lab.down([]);
   assert.equal(out.ok, undefined);
-  assert.deepEqual(out.steps.map((s) => s.step).slice(1, 5), [
+  assert.deepEqual(out.steps.map((s) => s.step).slice(1, 7), [
     "session",
     "wda",
     "tunnel",
+    "safaridriver",
+    "appium",
     "simulator",
   ]);
   assert.equal(
@@ -4682,10 +4703,10 @@ test("down on a device run closes the lab's tab before it deletes the session, s
       "session",
       "wda",
       "tunnel",
-      "simulator",
-      "window",
       "safaridriver",
       "appium",
+      "simulator",
+      "window",
       "release",
     ],
   );
@@ -4930,15 +4951,22 @@ test("a signal during a synchronous step of down (simctl shutdown) stops the ste
   );
   assert.deepEqual(
     out.steps.map((s) => s.step),
-    ["lease", "session", "wda", "tunnel", "simulator"],
+    [
+      "lease",
+      "session",
+      "wda",
+      "tunnel",
+      "safaridriver",
+      "appium",
+      "simulator",
+    ],
     "nothing after the simulator step",
   );
   assert.deepEqual(simctl("shutdown"), [["xcrun", "simctl", "shutdown", U]]);
   assert.deepEqual(quits(), [], "the window was not asked to quit");
-  assert.deepEqual(
-    launchctl().filter((c) => !c.startsWith("print")),
-    [],
-    "Appium was not stopped",
+  assert.ok(
+    launchctl().some((c) => c.startsWith("bootout")),
+    "Appium was already stopped",
   );
   assert.ok(lease.read(), "the lease is kept");
 });
@@ -5570,10 +5598,10 @@ test("down --idle on an idle lab stops what the lab started, as lab down does, a
       "session",
       "wda",
       "tunnel",
-      "simulator",
-      "window",
       "safaridriver",
       "appium",
+      "simulator",
+      "window",
     ],
   ); // no lease or release step: the idle stop holds its own
   assert.equal(out.owner, "msl-idle");
@@ -5606,10 +5634,10 @@ test("down --idle on an idle lab stops what the lab started, as lab down does, a
       "session",
       "wda",
       "tunnel",
-      "simulator",
-      "window",
       "safaridriver",
       "appium",
+      "simulator",
+      "window",
     ],
   );
   assert.equal(lines.length, 1);
@@ -6067,17 +6095,21 @@ test("a `lab up` that wins the race between the first look and the take is not s
 });
 
 test("a takeover in the middle of the stop (lab up --force) ends it early, and its lease is not removed", async () => {
-  world({ onShutdown: () => asLeaseHolder("agent-b") });
-  sim.state = "Shutdown";
+  world({
+    onCommand: (cmd, args) => {
+      if (cmd === "launchctl" && args[0] === "bootout")
+        asLeaseHolder("agent-b");
+    },
+  });
   await idleLab(20);
   const [out, lines] = await logged(() => lab.down(["--idle"]));
   assert.equal(out.ok, false);
   assert.match(out.error, /someone took the lab over while the idle stop ran/);
   assert.deepEqual(
     out.steps.map((s) => s.step),
-    ["session", "wda", "tunnel", "simulator"],
-  ); // window, safaridriver and appium did not run
-  assert.ok(!launchctl().some((c) => c.startsWith("bootout")));
+    ["session", "wda", "tunnel", "safaridriver", "appium"],
+  ); // simulator and window did not run
+  assert.deepEqual(simctl("shutdown"), []);
   assert.equal(
     lease.read().owner,
     "agent-b",
@@ -6954,10 +6986,10 @@ test("down puts both back in the session step (no extra step), says so at the to
     "session",
     "wda",
     "tunnel",
-    "simulator",
-    "window",
     "safaridriver",
     "appium",
+    "simulator",
+    "window",
     "release",
   ]);
   assert.equal(out.phoneRestored, true);
