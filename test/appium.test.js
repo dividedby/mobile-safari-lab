@@ -8500,6 +8500,12 @@ const DEPLOYMENT_TARGET =
 const OLD_SDK = (cmd, args) =>
   args.includes("--show-sdk-version") ? { stdout: "26.4\n" } : undefined;
 
+test("a phone that isn't ahead of Xcode's SDK gets no hint about Xcode on an unknown failure (#17)", async () => {
+  const e = await createFailsWith(() => {});
+  assert.equal(e.extra.needs, "unknown");
+  assert.ok(!e.extra.human.some((l) => /update Xcode/.test(l)));
+});
+
 test("Xcode refusing the deployment target, only in Appium's log, is needs xcode-update (#17)", async () => {
   const e = await createFailsWith(() => {
     ps.fx.onCreateRequest = () => appendAppiumLog(DEPLOYMENT_TARGET);
@@ -8509,24 +8515,33 @@ test("Xcode refusing the deployment target, only in Appium's log, is needs xcode
   assert.equal(e.extra.then, "lab up --target device");
 });
 
-test("a cable start on a phone newer than Xcode's SDK asks for the SDK's version, and a failure with no other reason names Xcode (#17)", async () => {
+test("a cable start on a phone newer than Xcode's SDK asks for the SDK's version, and a failure with no known reason stays unknown with a hint about Xcode (#17)", async () => {
   const e = await createFailsWith(() => {}, OLD_SDK);
   assert.equal(
     dlog.find(([m, u]) => m === "POST" && u === "/session")[2].capabilities
       .alwaysMatch["appium:platformVersion"],
     "26.4",
   );
-  assert.equal(e.extra.needs, "xcode-update");
+  assert.equal(e.extra.needs, "unknown");
+  assert.equal(e.extra.then, "lab phone status");
   assert.match(e.message, /xcodebuild failed with code 65/);
-  assert.match(e.message, /newer than this Xcode's iOS 26\.4 SDK/);
+  assert.match(
+    e.extra.human.at(-1),
+    /newer than this Xcode's iOS 26\.4 SDK\. That can work, but if this keeps failing, update Xcode\./,
+  );
+  assert.ok(
+    e.extra.human.some((l) => /lab phone status/.test(l)),
+    "the unknown steps stay",
+  );
   assert.equal(e.extra.tabLeft, "new", "the tab note still comes first");
 });
 
-test("a phone newer than Xcode's SDK keeps a failure that has its own reason (#17)", async () => {
+test("a phone newer than Xcode's SDK keeps a failure that has its own reason, with no hint about Xcode (#17)", async () => {
   const e = await createFailsWith(() => {
     ps.fx.onCreateRequest = () => appendAppiumLog(UNTRUSTED);
   }, OLD_SDK);
   assert.equal(e.extra.needs, "trust");
+  assert.ok(!e.extra.human.some((l) => /update Xcode/.test(l)));
 });
 
 test("trust from the log keeps the Mac's step when the log asks for Trust This Computer", async () => {

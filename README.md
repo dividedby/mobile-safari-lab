@@ -783,7 +783,7 @@ and `lab phone setup` for another phone are refused while a record exists.
 **When it won't run: `needs`.** Every device failure ends in JSON with `needs`, `human`
 (what a person does) and `then` (what to run afterwards; a `lab up` there repeats the flags
 the run was given that fit its target, such as `--allow-host` and `--url`, never `--force`). The values: `setup` (no phone
-saved), `xcode-account` (sign in, make a certificate), `xcode-update` (the phone's iOS is ahead of Xcode and it couldn't be worked around), `keychain` (Always Allow at the Mac),
+saved), `xcode-account` (sign in, make a certificate), `xcode-update` (Xcode refused the deployment target for the phone's iOS), `keychain` (Always Allow at the Mac),
 `developer-mode`, `trust`, `unlock` (phone locked or asleep), `passcode` (enter the passcode
 on the phone when it asks to enable UI automation; a timeout the first time after a while
 usually means this), `cable` (the Mac can't reach the phone: unplugged, or not seen on the network; a phone that was last reached over Wi-Fi and is gone says `tunnel` instead),
