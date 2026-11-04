@@ -4405,6 +4405,7 @@ function phoneIs(kind = "reachable", extra = null) {
     const other = extra?.(cmd, args);
     if (other) return other;
     if (cmd !== "xcrun") return undefined;
+    if (args.includes("--show-sdk-version")) return { stdout: "" };
     if (args.includes("launch")) {
       onLaunch?.(args[args.indexOf("--payload-url") + 1]);
       return { code: 0 };
@@ -8433,10 +8434,10 @@ const appendAppiumLog = (text) => {
   fs.appendFileSync(logPath(), text);
 };
 
-async function createFailsWith(prepare) {
+async function createFailsWith(prepare, extra = null) {
   deviceReset();
   withPhone();
-  phoneIs();
+  phoneIs("reachable", extra);
   process.env.MSL_APPIUM_URL = `http://127.0.0.1:${ps.port}`;
   prepare();
   ps.fx.createErrors = [XCODEBUILD_65];
@@ -8492,6 +8493,40 @@ test("a create that fails with exit 65 and no Appium log is needs unknown", asyn
   });
   assert.equal(e.extra.needs, "unknown");
   assert.match(e.message, /xcodebuild failed with code 65/);
+});
+
+const DEPLOYMENT_TARGET =
+  "The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 27.2, but the range of supported deployment target versions is 15.0 to 27.0.x.\n";
+const OLD_SDK = (cmd, args) =>
+  args.includes("--show-sdk-version") ? { stdout: "26.4\n" } : undefined;
+
+test("Xcode refusing the deployment target, only in Appium's log, is needs xcode-update (#17)", async () => {
+  const e = await createFailsWith(() => {
+    ps.fx.onCreateRequest = () => appendAppiumLog(DEPLOYMENT_TARGET);
+  });
+  assert.equal(e.extra.needs, "xcode-update");
+  assert.match(e.message, /points to: xcode-update/);
+  assert.equal(e.extra.then, "lab up --target device");
+});
+
+test("a cable start on a phone newer than Xcode's SDK asks for the SDK's version, and a failure with no other reason names Xcode (#17)", async () => {
+  const e = await createFailsWith(() => {}, OLD_SDK);
+  assert.equal(
+    dlog.find(([m, u]) => m === "POST" && u === "/session")[2].capabilities
+      .alwaysMatch["appium:platformVersion"],
+    "26.4",
+  );
+  assert.equal(e.extra.needs, "xcode-update");
+  assert.match(e.message, /xcodebuild failed with code 65/);
+  assert.match(e.message, /newer than this Xcode's iOS 26\.4 SDK/);
+  assert.equal(e.extra.tabLeft, "new", "the tab note still comes first");
+});
+
+test("a phone newer than Xcode's SDK keeps a failure that has its own reason (#17)", async () => {
+  const e = await createFailsWith(() => {
+    ps.fx.onCreateRequest = () => appendAppiumLog(UNTRUSTED);
+  }, OLD_SDK);
+  assert.equal(e.extra.needs, "trust");
 });
 
 test("trust from the log keeps the Mac's step when the log asks for Trust This Computer", async () => {

@@ -756,12 +756,52 @@ test("classify: failure text -> needs", () => {
       "Internal logic error: Connection was invalidated (com.apple.CoreDevice.ControlChannelConnectionError error 1)",
       "cable",
     ],
+    [
+      "error: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 27.2, but the range of supported deployment target versions is 15.0 to 27.0.x.",
+      "xcode-update",
+    ],
     ["something nobody has seen before", "unknown"],
     ["", "unknown"],
     [undefined, "unknown"],
   ];
   for (const [text, needs] of table)
     assert.equal(phone.classify(text), needs, String(text).slice(0, 70));
+});
+
+test("sdkBehind: the iOS SDK's version only when the phone's iOS is newer; anything unreadable changes nothing", () => {
+  const calls = fakeRunner((cmd) =>
+    cmd === "xcrun" ? { stdout: "27.0\n" } : undefined,
+  );
+  for (const newer of ["27.2", "27.2.1", "28.0"])
+    assert.equal(phone.sdkBehind(newer), "27.0", newer);
+  for (const fine of ["27.0", "27.0.1", "26.4"])
+    assert.equal(phone.sdkBehind(fine), null, fine);
+  assert.deepEqual(calls[0], [
+    "xcrun",
+    "--sdk",
+    "iphoneos",
+    "--show-sdk-version",
+  ]);
+  assert.ok(calls.opts[0].timeoutMs > 0, "the lookup is bounded");
+
+  for (const reply of [
+    { code: 1, stderr: "xcrun: error: SDK not found" },
+    { stdout: "not a version\n" },
+    { stdout: "" },
+  ]) {
+    fakeRunner(() => reply);
+    assert.equal(phone.sdkBehind("27.2"), null, JSON.stringify(reply));
+  }
+  const none = fakeRunner();
+  for (const unknown of [null, undefined, "", "27"])
+    assert.equal(phone.sdkBehind(unknown), null);
+  assert.equal(none.length, 0, "no version to compare, nothing to ask");
+});
+
+test("needs xcode-update says to update Xcode and to run the phone start again", () => {
+  const { human, then } = phone.needsError("xcode-update", "x").extra;
+  assert.match(human.join(" "), /Update Xcode/);
+  assert.equal(then, "lab up --target device");
 });
 
 test("classify prefers the actionable cause when texts are combined", () => {

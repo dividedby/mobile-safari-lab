@@ -215,6 +215,86 @@ test("launchWda: a failed build is classified and nothing is started", async () 
   assert.equal(spawned.length, 0);
 });
 
+const SDK_27 = (cmd, args) =>
+  cmd === "xcrun" && args.includes("--show-sdk-version")
+    ? { stdout: "27.0\n" }
+    : undefined;
+
+test("wdaBuildArgs: a phone newer than Xcode's iOS SDK builds for the SDK's version; otherwise for the phone's (#17)", () => {
+  const target = (platformVersion, action) =>
+    tunnel
+      .wdaBuildArgs({ phone: PHONE, platformVersion, action })
+      .filter((a) => /DEPLOYMENT_TARGET/.test(a));
+  fakeRunner(SDK_27);
+  for (const action of ["build-for-testing", "test-without-building"]) {
+    assert.deepEqual(target("27.2", action), [
+      "IPHONEOS_DEPLOYMENT_TARGET=27.0",
+    ]);
+    assert.deepEqual(target("26.4", action), [
+      "IPHONEOS_DEPLOYMENT_TARGET=26.4",
+    ]);
+  }
+  fakeRunner(() => ({ code: 1, stderr: "xcrun: error" }));
+  assert.deepEqual(
+    target("27.2", "build-for-testing"),
+    ["IPHONEOS_DEPLOYMENT_TARGET=27.2"],
+    "an SDK it can't read leaves the phone's version",
+  );
+});
+
+test("launchWda: Xcode refusing the deployment target is needs xcode-update, and nothing is started (#17)", async () => {
+  fakeRunner((cmd) =>
+    cmd === "xcodebuild"
+      ? {
+          code: 65,
+          stderr:
+            "error: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 27.2, but the range of supported deployment target versions is 15.0 to 27.0.x.",
+        }
+      : undefined,
+  );
+  await assert.rejects(
+    tunnel.launchWda({ phone: PHONE, tunnel: TUN, platformVersion: "27.2" }),
+    (e) => e.extra.needs === "xcode-update",
+  );
+  assert.equal(spawned.length, 0);
+});
+
+test("launchWda: beforeStart runs once the build is done and before the runner starts, and not at all when the build fails (#17)", async () => {
+  let started = 0;
+  const seen = [];
+  await tunnel.launchWda({
+    phone: PHONE,
+    tunnel: TUN,
+    platformVersion: "27.0.1",
+    beforeStart: () => {
+      started++;
+      seen.push({
+        built: calls.some(
+          (c) => c[0] === "xcodebuild" && c[1] === "build-for-testing",
+        ),
+        spawned: spawned.length,
+      });
+    },
+  });
+  assert.equal(started, 1);
+  assert.deepEqual(seen, [{ built: true, spawned: 0 }]);
+
+  started = 0;
+  fakeRunner((cmd) =>
+    cmd === "xcodebuild" ? { code: 65, stderr: "error: boom" } : undefined,
+  );
+  await assert.rejects(
+    tunnel.launchWda({
+      phone: PHONE,
+      tunnel: TUN,
+      platformVersion: "27.0.1",
+      beforeStart: () => started++,
+    }),
+    (e) => e.extra?.needs === "unknown",
+  );
+  assert.equal(started, 0, "a build that fails never started WebDriverAgent");
+});
+
 test("launchWda: the build runs asynchronously with the limit and the lease renewal; an interrupt during it ends the command and starts nothing", async () => {
   let seen;
   setAsyncRunner((cmd, args, opts) => {
