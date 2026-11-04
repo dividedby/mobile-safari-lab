@@ -1340,17 +1340,17 @@ test("down ends a --device session and stops the safaridriver the lab started, e
 });
 
 test("down stops Appium before it shuts the simulator: a session start still running in Appium can't boot it again (#17)", async () => {
-  let appiumUp = null;
+  let appiumLoadedAtShutdown = null;
   const w = world({
     onShutdown: () => {
-      appiumUp = w.loaded;
+      appiumLoadedAtShutdown = w.loaded;
     },
   });
   await lab.up([]);
   const out = await lab.down([]);
   assert.equal(out.ok, undefined, out.error);
   assert.equal(
-    appiumUp,
+    appiumLoadedAtShutdown,
     false,
     "Appium was stopped when the shutdown was sent",
   );
@@ -1555,9 +1555,14 @@ test("down stops the WebDriverAgent xcodebuild Appium started and a simctl diagn
   await lab.up([]);
   const out = await lab.down([]);
   assert.equal(out.ok, undefined);
-  const order = out.steps.map((s) => s.step);
-  assert.deepEqual(order.slice(1, 4), ["session", "wda", "tunnel"]);
-  assert.ok(order.indexOf("wda") < order.indexOf("simulator"));
+  assert.deepEqual(out.steps.map((s) => s.step).slice(1, 7), [
+    "session",
+    "wda",
+    "tunnel",
+    "safaridriver",
+    "appium",
+    "simulator",
+  ]);
   assert.equal(
     stepOf(out, "wda").found,
     "xcodebuild (pid 7001), simctl diagnose (pid 7002)",
@@ -4930,6 +4935,10 @@ test("a signal during a synchronous step of down (simctl shutdown) stops the ste
   );
   assert.deepEqual(simctl("shutdown"), [["xcrun", "simctl", "shutdown", U]]);
   assert.deepEqual(quits(), [], "the window was not asked to quit");
+  assert.ok(
+    launchctl().some((c) => c.startsWith("bootout")),
+    "Appium was already stopped",
+  );
   assert.ok(lease.read(), "the lease is kept");
 });
 

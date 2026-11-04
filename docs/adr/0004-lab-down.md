@@ -19,7 +19,7 @@ bring it back.
   stops before the simulator: a session start still running in it (a killed `lab up`) would boot the
   simulator again after a shutdown ([issue #17](https://github.com/dividedby/mobile-safari-lab/issues/17)).
 - **Best effort, lease kept on failure.** A failed step is recorded and the later ones still
-  run (a stuck simulator shouldn't leave Appium running). Any failure makes the result
+  run (a stuck Appium shouldn't leave the simulator running). Any failure makes the result
   `ok: false` and skips `release`, so the person who retries still owns the simulator. The
   exception is the lease gate: another owner's live lease stops `down` before it touches
   anything (`--force` takes it, as in `lab up`). The check (`lease.check`) reads under the

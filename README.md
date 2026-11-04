@@ -184,7 +184,7 @@ calls that "not loaded", which is normal after `lab down`). Without the LaunchAg
 stops the Appium the lab started, after checking with `ps` that the recorded pid still
 runs it. Appium stops before the simulator, so a session start that a killed `lab up` left
 running can't boot it again. `--keep-service` leaves the Appium service
-running, so that can still happen with it. A Wi-Fi tunnel is stopped in its own step, `tunnel`, right after `wda`, also with `--keep-service`. A foreign lease is refused like `lab up` does; `--force` takes it. Each step
+running, so with that flag such a session start can still boot the simulator. A Wi-Fi tunnel is stopped in its own step, `tunnel`, right after `wda`, also with `--keep-service`. A foreign lease is refused like `lab up` does; `--force` takes it. Each step
 reports `found` and `did`, a second run changes nothing, and if a step fails the others
 still run, the result is `ok: false`, and the lease is kept so a retry stays yours. A page
 you started a local server for is not the lab's: stop that yourself.
