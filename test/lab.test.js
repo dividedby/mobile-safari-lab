@@ -28,7 +28,7 @@ import {
   setRunner,
   setSpawner,
 } from "../lib/core.js";
-import { handlers as lab } from "../lib/lab.js";
+import { handlers as lab, labHooks } from "../lib/lab.js";
 import { udid as simUdid } from "../lib/sim.js";
 import * as phone from "../lib/phone.js";
 import * as ledger from "../lib/phone-restore.js";
@@ -1870,7 +1870,7 @@ test("a needs failure's then repeats the flags the run was given, quoted and in 
     `lab up --target device --allow-host a.test --allow-host b.test --url 'https://old.test/?a=1&b=2 x'\\''y' --appearance dark --orientation landscape --no-focus`,
   );
   assert.ok(!out.then.includes("--force"));
-  assert.equal(out.or, "lab up --target simulator", "`or` is left alone");
+  assert.equal(out.or, undefined, "the simulator is not offered");
 
   // With no extra flags `then` is the table's own.
   assert.equal(
@@ -2861,7 +2861,7 @@ test("phone status when absent, locked, or unreachable carries needs and steps",
     [out.found, out.reachable, out.transport, out.needs],
     [false, false, null, "cable"],
   );
-  assert.ok(out.human.length && out.then && out.or);
+  assert.ok(out.human.length && out.then);
 
   phoneWorld({ ...CABLE, lockState: { json: "lock-locked.json" } });
   out = await lab.phone(["status"]);
@@ -2938,7 +2938,7 @@ test("lab up with a phone last reached over Wi-Fi that is now silent stops at th
     [out.ok, out.failedStep, out.needs, out.then],
     [false, "phone", "tunnel", "lab up --target device"],
   );
-  assert.equal(out.or, "lab up --target simulator");
+  assert.equal(out.or, undefined);
   assert.equal(
     loadState().phone.seen.via,
     "tunnel",
@@ -4082,7 +4082,7 @@ test("--target device beside a live simulator session is refused without asking 
   assert.deepEqual(devicectlCalls(calls), []);
 });
 
-test("up refuses what cannot be used, with needs, steps, and the simulator as the way out; no session, no simulator", async () => {
+test("up refuses what cannot be used, with needs and steps, and doesn't offer the simulator; no session, no simulator", async () => {
   const noDevMode = variant("devices-cable.json", (j) => {
     physical(j).deviceProperties.developerModeStatus = "disabled";
   });
@@ -4117,7 +4117,7 @@ test("up refuses what cannot be used, with needs, steps, and the simulator as th
       assert.equal(out.failedStep, "phone", label);
       assert.equal(out.needs, needs, label);
       assert.ok(out.human.length && out.then, label);
-      assert.equal(out.or, "lab up --target simulator", label);
+      assert.equal(out.or, undefined, label);
       assert.deepEqual(
         stepNames(out),
         ["lease", "prerequisites", "appium", "phone"],
@@ -4496,7 +4496,7 @@ test("up on the phone goes through cli as one JSON object, with needs on failure
   const o = JSON.parse(lines[0]);
   assert.deepEqual(
     [o.ok, o.failedStep, o.needs, o.or],
-    [false, "phone", "cable", "lab up --target simulator"],
+    [false, "phone", "cable", undefined],
   );
 });
 
@@ -8728,4 +8728,126 @@ test("a simulator run that cannot give the slot back says so in `human` and goes
   } finally {
     delete process.env.MSL_SIDELOAD_BIN;
   }
+});
+
+// --- the simulator is off until the owner turns it on (#14) ---
+
+const offRefusal = (e) =>
+  e.extra?.needs === "simulator-off" &&
+  e.extra.human.some((l) => /lab simulator on/.test(l)) &&
+  e.extra.human.some((l) => /--target device/.test(l));
+
+for (const [what, args] of [
+  ["--target simulator", ["--target", "simulator"]],
+  [
+    "--target simulator --profile configured",
+    ["--target", "simulator", "--profile", "configured"],
+  ],
+  ["auto with no phone saved", []],
+]) {
+  test(`lab up ${what} is refused while the simulator is off, before anything starts (#14)`, async () => {
+    world();
+    saveState({ simulatorAllowed: null });
+    await assert.rejects(lab.up(args), offRefusal);
+    assert.deepEqual(simctl("boot"), []);
+    assert.deepEqual(
+      launchctl().filter((c) => !c.startsWith("print")),
+      [],
+    );
+    assert.equal(lease.read(), null, "no lease was taken");
+  });
+}
+
+test("lab up --target device doesn't need the simulator turned on (#14)", async () => {
+  deviceWorld(CABLE, { expires: inHours(72) });
+  savePhone();
+  saveState({ simulatorAllowed: null });
+  const out = await lab.up(["--target", "device"]);
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(out.targetType, "device");
+});
+
+const withInteractive = async (value, fn) => {
+  const real = labHooks.interactive;
+  labHooks.interactive = () => value;
+  try {
+    return await fn();
+  } finally {
+    labHooks.interactive = real;
+  }
+};
+
+test("lab simulator on is refused away from a terminal, and writes nothing (#14)", async () => {
+  saveState({ simulatorAllowed: null });
+  await withInteractive(false, () =>
+    assert.rejects(lab.simulator(["on"]), /own terminal/),
+  );
+  assert.equal(loadState().simulatorAllowed, undefined);
+});
+
+test("lab simulator on, off and status; lab status shows it (#14)", async () => {
+  world();
+  saveState({ simulatorAllowed: null });
+  assert.equal((await lab.simulator(["status"])).simulatorAllowed, false);
+  assert.equal(
+    (await withInteractive(true, () => lab.simulator(["on"]))).simulatorAllowed,
+    true,
+  );
+  assert.equal(loadState().simulatorAllowed, true);
+  assert.equal((await lab.status()).simulatorAllowed, true);
+  await lab.up([]);
+  assert.equal(sim.state, "Booted", "lab up works once it is on");
+  await lab.down([]);
+  assert.equal(
+    (await withInteractive(false, () => lab.simulator(["off"])))
+      .simulatorAllowed,
+    false,
+    "turning it off needs no terminal",
+  );
+  assert.equal(loadState().simulatorAllowed, undefined);
+  assert.equal((await lab.status()).simulatorAllowed, false);
+  for (const bad of [[], ["maybe"], ["on", "now"]])
+    await assert.rejects(
+      lab.simulator(bad),
+      /usage: lab simulator on \| off \| status/,
+    );
+});
+
+test("the refusal's then repeats the run's flags, so turning the simulator on starts the same session (#14)", async () => {
+  world();
+  saveState({ simulatorAllowed: null });
+  await assert.rejects(
+    lab.up([
+      "--target",
+      "simulator",
+      "--profile",
+      "configured",
+      "--url",
+      "https://a.test/?x=1&y=2",
+    ]),
+    (e) =>
+      e.extra.needs === "simulator-off" &&
+      e.extra.then ===
+        "lab up --target simulator --url 'https://a.test/?x=1&y=2' --profile configured",
+  );
+});
+
+test("a bad flag is reported ahead of the refusal (#14)", async () => {
+  world();
+  saveState({ simulatorAllowed: null });
+  await assert.rejects(
+    lab.up(["--resign"]),
+    /--resign re-signs the saved phone/,
+  );
+});
+
+test("a simulator already running can still be shut down with the setting off (#14)", async () => {
+  world();
+  await lab.up([]);
+  assert.equal(sim.state, "Booted");
+  saveState({ simulatorAllowed: null });
+  const out = await lab.down([]);
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(stepOf(out, "simulator").did, "shut down");
+  assert.equal(sim.state, "Shutdown");
 });

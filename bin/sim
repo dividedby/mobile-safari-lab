@@ -2,7 +2,12 @@
 // The simulator: create, boot, open, shot, tap, type, scroll, swipe, ui, appearance,
 // statusbar, shutdown, reset, profile, run, doctor. Prints JSON. See README.md.
 import { cli } from "../lib/core.js";
-import { handlers, refuseOnDevice, checkProfileArg } from "../lib/sim.js";
+import {
+  handlers,
+  refuseOnDevice,
+  checkProfileArg,
+  refuseWhileOff,
+} from "../lib/sim.js";
 import { guard, recordActivity } from "../lib/lease.js";
 
 // Commands that change the phone take (or renew) the simulator lease; the rest only look (`shot` and `ui` still count as activity, below).
@@ -37,6 +42,7 @@ const hooks = {
   async before(name, args) {
     checkProfileArg(name, args); // an unknown profile is refused before the lease is taken
     if (deviceRefused.has(name)) refuseOnDevice(name);
+    refuseWhileOff(name); // so is a boot while the simulator is off
     // `shot` and `ui` take no lease, but the person is using the simulator: the idle stop counts them.
     if (looks.has(name)) await recordActivity();
     return lease.before(name, args);

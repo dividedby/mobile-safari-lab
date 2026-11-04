@@ -127,7 +127,7 @@ test(
           "sideload is signing or installing an app with the same Apple team; try again in a minute.",
         ]);
         assert.equal(e.extra.then, "lab up --target device");
-        assert.equal(e.extra.or, "lab up --target simulator");
+        assert.equal(e.extra.or, undefined);
       });
     } finally {
       await other.release();

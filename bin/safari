@@ -8,6 +8,7 @@
 // Prints JSON; a failed page command leaves a screenshot and the page source.
 import { cli } from "../lib/core.js";
 import { handlers, failureArtifacts } from "../lib/safari.js";
+import { refuseStartWhileOff } from "../lib/sim.js";
 import { guard } from "../lib/lease.js";
 
 const usage = {
@@ -46,8 +47,13 @@ const usage = {
 
 // Every command shares the one session (even `url` switches context, `console` drains a
 // buffer), so every command takes or renews the simulator lease; `stop` releases it.
+const lease = guard(new Set(Object.keys(handlers)));
 process.exitCode = await cli(handlers, process.argv.slice(2), {
   onError: failureArtifacts,
   usage,
-  ...guard(new Set(Object.keys(handlers))),
+  ...lease,
+  async before(name, args) {
+    refuseStartWhileOff(name, args); // a refused start takes no lease
+    return lease.before(name, args);
+  },
 });

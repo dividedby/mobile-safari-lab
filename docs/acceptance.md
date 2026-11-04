@@ -5,6 +5,8 @@ and any surprises here, then update the README's Status. Run the proof-of-concep
 (3 to 12) three times each. Targets: a local dev server (a one-line `python3 -m http.server`
 page with a text input is enough) and the Minute Cryptic Plus puzzle.
 
+The simulator is off until the owner turns it on ([ADR 0010](adr/0010-simulator-off-by-default.md)): run `lab simulator on` in your own terminal before any item here that uses it.
+
 - [x] **1. Tests and tools:** `pnpm test` is green. `sim doctor` returns `ok: true` and lists `appium`.
 - [x] **2. Simulator:** `sim create` on a fresh list picks the newest iPhone, not iPhone 11. `sim boot` opens Device Hub and exits 0.
 - [x] **3. Session:** the first `safari start` (cold, about 2 minutes) returns a session. A second `safari start` says `reused: true`. A separate shell reattaches. `lsof -iTCP:4723 -sTCP:LISTEN` shows `127.0.0.1` only.

@@ -4594,12 +4594,12 @@ test("--target simulator ignores a saved phone and keeps the simulator caps", as
   assert.equal(calls.length, 0, "the phone is not asked");
 });
 
-test("an unreachable or locked phone is a needs error with the simulator way out, never a silent fallback", async () => {
+test("an unreachable or locked phone is a needs error, with no simulator way out and never a silent fallback", async () => {
   withPhone();
   phoneIs("offline");
   let e = await failing(safari.start([]));
   assert.equal(e.extra.needs, "cable");
-  assert.equal(e.extra.or, "lab up --target simulator");
+  assert.equal(e.extra.or, undefined);
   assert.ok(e.extra.human.length > 0 && e.extra.then);
   phoneIs("locked");
   e = await failing(safari.start(["--device", PU]));
@@ -4652,7 +4652,7 @@ test("a failed device session create prints needs, human, then and or, classifie
   assert.equal(out.needs, "passcode");
   assert.ok(out.human.length > 0);
   assert.equal(out.then, "lab up --target device");
-  assert.equal(out.or, "lab up --target simulator");
+  assert.equal(out.or, undefined);
   assert.match(out.error, /Timed out while enabling automation mode/);
   assert.equal(JSON.stringify(out).includes("SECRETX"), false);
   assert.equal(loadState().session, undefined);
@@ -4738,7 +4738,7 @@ test("a device session needs the Appium service with log filters, and a simulato
     let e = await failing(safari.start(["--device", PU]));
     assert.match(e.message, /the LaunchAgent is not installed/);
     assert.equal(e.extra.then, "lab service install");
-    assert.ok(e.extra.human.length > 0 && e.extra.needs && e.extra.or);
+    assert.ok(e.extra.human.length > 0 && e.extra.needs);
     // An old plist, without --log-level info / --log-filters.
     install(old());
     assert.doesNotMatch(fs.readFileSync(plistPath(), "utf8"), /log-filters/);
@@ -5279,7 +5279,7 @@ test("a tab that does not answer over a tunnel that does not answer is needs tun
     const e = await failing(safari.eval(["1"]));
     assert.equal(e.extra.needs, "tunnel");
     assert.equal(e.extra.then, "lab up --target device");
-    assert.equal(e.extra.or, "lab up --target simulator");
+    assert.equal(e.extra.or, undefined);
     assert.match(e.extra.tunnel, /does not answer through the tunnel/);
     assert.equal(e.skipArtifacts, true);
     assert.equal(e.routeDown, true);
@@ -13912,5 +13912,25 @@ test("a guard answer of 3 that the guard could not have given (no list, or after
     loadState().deviceTab,
     tainted(OLD),
     "the follow itself worked: the tab was on the allowed host",
+  );
+});
+
+test("safari start on the simulator is refused while it is off, before Appium is asked (#14)", async () => {
+  saveState({
+    simulatorAllowed: null,
+    udid: U,
+    phone: null,
+    lastTarget: "device",
+  });
+  fakeRunner();
+  for (const args of [["--target", "simulator"], []])
+    await assert.rejects(
+      safari.start(args),
+      (e) => e.extra?.needs === "simulator-off",
+    );
+  assert.equal(
+    loadState().lastTarget,
+    "device",
+    "a refused start changes nothing",
   );
 });

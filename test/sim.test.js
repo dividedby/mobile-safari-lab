@@ -30,6 +30,7 @@ import {
   configuredRecord,
   yieldTo,
   checkProfileArg,
+  refuseWhileOff,
 } from "../lib/sim.js";
 import { INSTALL_HINT, registryModule } from "../lib/appium.js";
 import { InterruptError, withInterrupt } from "../lib/interrupt.js";
@@ -1797,4 +1798,23 @@ test("doctor reports phoneDisplay (the devicectl appearance and orientation comm
   assert.deepEqual(out.missing, ["xcode"]);
   assert.ok("phoneDisplay" in out.hints && "xcode" in out.hints);
   assert.equal(out.phoneDisplay, false);
+});
+
+test("sim create and sim boot are refused while the simulator is off, and bootSim boots nothing (#14)", async () => {
+  const calls = fakeRunner();
+  saveState({ simulatorAllowed: null, udid: U });
+  for (const name of ["create", "boot"])
+    assert.throws(
+      () => refuseWhileOff(name),
+      (e) => e.extra.needs === "simulator-off",
+    );
+  for (const name of ["shutdown", "reset", "udid", "doctor"])
+    refuseWhileOff(name);
+  await assert.rejects(bootSim(U), (e) => e.extra.needs === "simulator-off");
+  assert.deepEqual(
+    calls.filter((c) => c.includes("boot")),
+    [],
+  );
+  saveState({ simulatorAllowed: true });
+  refuseWhileOff("boot");
 });

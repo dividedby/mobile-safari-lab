@@ -2,8 +2,8 @@
 
 Drive **real Mobile Safari** in the Xcode iOS Simulator, or on your own iPhone, from Claude
 Code (or by hand): screenshots, taps and typing on the phone, plus DOM access and JavaScript
-in the page. It replaces iPhone Mirroring for routine testing. The simulator is the default
-when no phone is saved; the iPhone is the final check, and it drives only its own tab.
+in the page. It replaces iPhone Mirroring for routine testing. The iPhone is the default, and the lab
+drives only its own tab there; the simulator is off until you turn it on with `lab simulator on`.
 
 Three small command-line tools, no dependencies in this repo:
 
@@ -92,8 +92,9 @@ public (2026-10-31) are plain text ("issue 98"): they refer to the private archi
    echo 'export PATH="$HOME/repos/mobile-safari-lab/bin:$PATH"' >> ~/.zshrc
    mkdir -p ~/.claude/skills && ln -s ~/repos/mobile-safari-lab/skill ~/.claude/skills/mobile-safari
    ```
-6. **The simulator:**
+6. **The simulator** (optional, and off until you turn it on; it takes about 3 to 5 GB of memory):
    ```sh
+   lab simulator on   # in your own terminal; agents can't run this
    sim doctor     # lists anything missing, with a fix for each; exits 1 if any (with a phone saved it also
                   # reports phoneDisplay: whether devicectl can set the iPhone's appearance and orientation; never fails ok)
    sim create     # "Claude iPhone": newest iPhone on the newest iOS runtime
@@ -331,7 +332,7 @@ two launch attempts of 30 s, which Appium polls for 72 to 120 s each, 10 s apart
 30 s). If a cold `lab up` still fails that way, or with `WebDriver POST /session got no answer in
 420s`, the simulator is booted by then, so run `lab up` again: the failed `session` step and the
 top level carry `human` lines and `then: "lab up --target simulator"` saying so, as a device
-`needs` does (without `needs` or `or`).
+`needs` does (without `needs`).
 For a short break don't use `lab down`: `safari stop` ends
 the session and releases the lease but leaves the simulator and Appium running, so the
 next `lab up` is warm. Which flag keeps what: `--keep-service` keeps only the Appium
@@ -551,14 +552,22 @@ a session without it is refused too, and a plist from before the plugin needs `l
 ```sh
 lab up --target auto        # the default
 lab up --target device      # the saved phone, or a `needs` value saying what to fix
-lab up --target simulator   # the Claude iPhone simulator, whatever else is saved
+lab up --target simulator   # the Claude iPhone simulator, once you've run `lab simulator on`
 safari start --target ...   # the same three values; --device <UDID> = --target device
 ```
 
-`auto` chooses: no phone saved, the simulator; a saved phone that is reachable, unlocked and
-in Developer Mode, the phone; a saved phone that is not, **a refusal** with `needs` and the
-steps to fix it, and `or: lab up --target simulator` for the way out (it never silently
-runs on the simulator when you saved a phone). `--device <UDID>` must be the saved phone.
+`auto` chooses: a saved phone that is reachable, unlocked and in Developer Mode, the phone; a
+saved phone that is not, **a refusal** with `needs` and the steps to fix it (it never moves to
+the simulator); no phone saved, the simulator, if it's on.
+
+**The simulator is off until you turn it on**, because it's heavy and an agent shouldn't start one
+unasked. While it's off, `lab up --target simulator`, `lab up` with no phone saved, `safari start`
+on the simulator, `sim create` and `sim boot` stop with `needs: simulator-off` before anything starts.
+`lab simulator on` turns it on for this Mac; it's refused away from a terminal, so an agent can't
+run it for you by accident. `lab simulator off` turns it off, and `lab simulator status` and
+`lab status` show `simulatorAllowed`.
+
+`--device <UDID>` must be the saved phone.
 `lab status` shows the saved phone and its signing expiry from the lab's own record without
 calling the phone, with `seen` (the iOS version the phone gave the last time `lab up` or
 `lab phone setup` read it); `lab phone status` asks it live and also gives `osVersion` and
@@ -783,7 +792,7 @@ and `lab phone setup` for another phone are refused while a record exists.
 **When it won't run: `needs`.** Every device failure ends in JSON with `needs`, `human`
 (what a person does) and `then` (what to run afterwards; a `lab up` there repeats the flags
 the run was given that fit its target, such as `--allow-host` and `--url`, never `--force`). The values: `setup` (no phone
-saved), `xcode-account` (sign in, make a certificate), `xcode-update` (Xcode refused the deployment target for the phone's iOS), `keychain` (Always Allow at the Mac),
+saved), `simulator-off` (`lab simulator on`, your call), `xcode-account` (sign in, make a certificate), `xcode-update` (Xcode refused the deployment target for the phone's iOS), `keychain` (Always Allow at the Mac),
 `developer-mode`, `trust`, `unlock` (phone locked or asleep), `passcode` (enter the passcode
 on the phone when it asks to enable UI automation; a timeout the first time after a while
 usually means this), `cable` (the Mac can't reach the phone: unplugged, or not seen on the network; a phone that was last reached over Wi-Fi and is gone says `tunnel` instead),

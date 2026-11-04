@@ -339,3 +339,22 @@ test("help: an unknown command is still exit 2, now with the usage", () => {
   assert.match(out.usage, /lab help <command>/);
   assert.ok(out.commands.includes("up"));
 });
+
+test("safari start refuses a new simulator session while it's off before taking the lease (#14)", () => {
+  fs.rmSync(path.join(stateDir(), "lease.json"));
+  record({ udid: SIM });
+  for (const args of [["start", "--target", "simulator"], ["start"]]) {
+    const { code, out } = call("safari", args);
+    assert.equal(code, 1, args.join(" "));
+    assert.equal(out.needs, "simulator-off", args.join(" "));
+    assert.ok(
+      !fs.existsSync(path.join(stateDir(), "lease.json")),
+      `${args.join(" ")} took the lease`,
+    );
+  }
+  assert.match(
+    call("safari", ["start", "--target", "maybe"]).out.error,
+    /--target must be one of/,
+    "a bad --target is the command's to report",
+  );
+});
