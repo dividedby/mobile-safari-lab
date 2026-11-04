@@ -5,6 +5,8 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-04
+
 ### Changed
 
 - **The simulator is off until you turn it on, and the iPhone is the default** ([issue #14](https://github.com/dividedby/mobile-safari-lab/issues/14), [ADR 0010](docs/adr/0010-simulator-off-by-default.md)). Agents kept choosing it because the docs offered it freely, which swamped a small Mac. Anything that would boot one or start a session on one now stops with `needs: simulator-off`, including `lab up` with no phone saved. **If you use the simulator, run `lab simulator on` once in your own terminal**; it's refused away from a terminal. `lab simulator off` and `status` are new too, and `lab status` shows `simulatorAllowed`.
