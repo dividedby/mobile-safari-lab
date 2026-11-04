@@ -7,6 +7,7 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ### Fixed
 
+- `lab down` could report `simulator: shut down` and `ok: true` and leave the simulator booted: when a `lab up` had been killed mid-start, its session start kept running in Appium and booted the simulator again seconds after the shutdown ([issue #17](https://github.com/dividedby/mobile-safari-lab/issues/17)). `lab down` now stops Appium first. `--keep-service` leaves Appium running, so that case remains.
 - `lab down` didn't say at the top level that the lab's tab was left on the phone: the step to close a blanked tab, or one the lab couldn't close, was only inside the `session` step, so an agent relaying `human` missed it. It now comes first in the top-level `human` as well, with no line repeated ([issue #10](https://github.com/dividedby/mobile-safari-lab/issues/10)).
 - `safari wait --settled` could return before a navigation that was asked for had started, so the next read showed the old page with `ok: true` ([issue #9](https://github.com/dividedby/mobile-safari-lab/issues/9)). The tracker it uses stays in the page, so a page an earlier wait had watched read as quiet at once. The wait now always runs for at least `--quiet` itself, which gives a navigation that long to start. So a repeated `wait --settled` takes at least 500 ms.
 - The docs said the Userscripts app's scripts don't run in the lab's tab on the iPhone, so to test with `safari inject`

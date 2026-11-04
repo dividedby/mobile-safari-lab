@@ -1206,10 +1206,10 @@ test("R1: the idle stop returns the slot: lock check, listing, uninstall of the 
       "wda",
       "slot",
       "tunnel",
-      "simulator",
-      "window",
       "safaridriver",
       "appium",
+      "simulator",
+      "window",
     ],
   );
   const verbs = calls
