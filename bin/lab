@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Availability: up [--target auto|device|simulator] [--resign] [--url <URL>] (health check and recovery), down [--idle] (stop what the lab started), status [--check-update],
-// hold [--minutes N] (keep the idle stop off while a person uses the simulator), release, service install|uninstall|status (the Appium LaunchAgent), and phone
+// simulator on|off|status (whether this Mac may run the simulator), hold [--minutes N] (keep the idle stop off while a person uses the simulator), release, service install|uninstall|status (the Appium LaunchAgent), and phone
 // setup --udid <UDID> --team <TEAM> [--bundle-id <id>] [--autocorrection on|off] [--prediction on|off] [--focus on|off] | status | forget (the physical iPhone), and tunnel
 // up|down|status (the Wi-Fi tunnel to it).
 // Prints JSON. See README.md.

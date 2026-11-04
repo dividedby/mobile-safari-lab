@@ -8767,27 +8767,40 @@ test("lab up --target device doesn't need the simulator turned on (#14)", async 
   assert.equal(out.targetType, "device");
 });
 
+const withInteractive = async (value, fn) => {
+  const real = labHooks.interactive;
+  labHooks.interactive = () => value;
+  try {
+    return await fn();
+  } finally {
+    labHooks.interactive = real;
+  }
+};
+
 test("lab simulator on is refused away from a terminal, and writes nothing (#14)", async () => {
   saveState({ simulatorAllowed: null });
-  labHooks.interactive = () => false;
-  await assert.rejects(lab.simulator(["on"]), /own terminal/);
+  await withInteractive(false, () =>
+    assert.rejects(lab.simulator(["on"]), /own terminal/),
+  );
   assert.equal(loadState().simulatorAllowed, undefined);
 });
 
 test("lab simulator on, off and status; lab status shows it (#14)", async () => {
   world();
   saveState({ simulatorAllowed: null });
-  labHooks.interactive = () => true;
   assert.equal((await lab.simulator(["status"])).simulatorAllowed, false);
-  assert.equal((await lab.simulator(["on"])).simulatorAllowed, true);
+  assert.equal(
+    (await withInteractive(true, () => lab.simulator(["on"]))).simulatorAllowed,
+    true,
+  );
   assert.equal(loadState().simulatorAllowed, true);
   assert.equal((await lab.status()).simulatorAllowed, true);
   await lab.up([]);
   assert.equal(sim.state, "Booted", "lab up works once it is on");
   await lab.down([]);
-  labHooks.interactive = () => false;
   assert.equal(
-    (await lab.simulator(["off"])).simulatorAllowed,
+    (await withInteractive(false, () => lab.simulator(["off"])))
+      .simulatorAllowed,
     false,
     "turning it off needs no terminal",
   );
@@ -8798,4 +8811,43 @@ test("lab simulator on, off and status; lab status shows it (#14)", async () => 
       lab.simulator(bad),
       /usage: lab simulator on \| off \| status/,
     );
+});
+
+test("the refusal's then repeats the run's flags, so turning the simulator on starts the same session (#14)", async () => {
+  world();
+  saveState({ simulatorAllowed: null });
+  await assert.rejects(
+    lab.up([
+      "--target",
+      "simulator",
+      "--profile",
+      "configured",
+      "--url",
+      "https://a.test/?x=1&y=2",
+    ]),
+    (e) =>
+      e.extra.needs === "simulator-off" &&
+      e.extra.then ===
+        "lab up --target simulator --url 'https://a.test/?x=1&y=2' --profile configured",
+  );
+});
+
+test("a bad flag is reported ahead of the refusal (#14)", async () => {
+  world();
+  saveState({ simulatorAllowed: null });
+  await assert.rejects(
+    lab.up(["--resign"]),
+    /--resign re-signs the saved phone/,
+  );
+});
+
+test("a simulator already running can still be shut down with the setting off (#14)", async () => {
+  world();
+  await lab.up([]);
+  assert.equal(sim.state, "Booted");
+  saveState({ simulatorAllowed: null });
+  const out = await lab.down([]);
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(stepOf(out, "simulator").did, "shut down");
+  assert.equal(sim.state, "Shutdown");
 });
