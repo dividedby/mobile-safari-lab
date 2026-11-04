@@ -15,7 +15,9 @@ bring it back.
 
 - **`lab down [--force] [--keep-service]`** in `bin/lab`, built from the same steps as
   `lab up` and reported the same way (`{ok, owner, steps:[{step, found, did, ms}]}`):
-  `lease`, `session`, `wda`, `simulator`, `window`, `safaridriver`, `appium`, `release`.
+  `lease`, `session`, `wda`, `safaridriver`, `appium`, `simulator`, `window`, `release`. Appium
+  stops before the simulator: a session start still running in it (a killed `lab up`) would boot the
+  simulator again after a shutdown ([issue #17](https://github.com/dividedby/mobile-safari-lab/issues/17)).
 - **Best effort, lease kept on failure.** A failed step is recorded and the later ones still
   run (a stuck simulator shouldn't leave Appium running). Any failure makes the result
   `ok: false` and skips `release`, so the person who retries still owns the simulator. The
