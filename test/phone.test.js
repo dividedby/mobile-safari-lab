@@ -819,7 +819,7 @@ test("classify prefers the actionable cause when texts are combined", () => {
 
 // --- needs errors ---
 
-test("needsError carries needs, steps, the follow-up command and the simulator way out", () => {
+test("needsError carries needs, steps and the follow-up command", () => {
   for (const needs of Object.keys(phone.NEEDS)) {
     const e = phone.needsError(needs, "boom");
     assert.equal(e.message, "boom");
@@ -830,16 +830,6 @@ test("needsError carries needs, steps, the follow-up command and the simulator w
       needs,
     );
     assert.equal(typeof e.extra.then, "string", needs);
-    assert.equal(
-      e.extra.or,
-      needs === "resign"
-        ? "lab phone setup --udid <UDID> --team <ID>"
-        : "lab up --target simulator",
-    );
-    assert.equal(
-      e.extra.simulator ?? "lab up --target simulator",
-      "lab up --target simulator",
-    );
   }
   const resign = phone.needsError("resign", "x").extra;
   assert.match(
@@ -847,7 +837,6 @@ test("needsError carries needs, steps, the follow-up command and the simulator w
     /If a re-sign doesn't fix it, Apple is rejecting this team: run `lab phone setup` with another team\./,
   );
   assert.equal(resign.then, "lab up --target device --resign");
-  assert.equal(resign.simulator, "lab up --target simulator");
   const service = phone.needsError("service", "x").extra;
   assert.match(
     service.human.join(" "),
@@ -971,7 +960,7 @@ test("chooseTarget: auto", () => {
     }),
   });
   assert.equal(gone.extra.needs, "cable");
-  assert.equal(gone.extra.or, "lab up --target simulator");
+  assert.equal(gone.extra.or, undefined, "the simulator is not offered");
   assert.equal(
     choose({ phone: REC, status: status({ reachable: true, locked: true }) })
       .extra.needs,
@@ -1094,8 +1083,7 @@ test("openTab validates, and failures become needs errors", () => {
   );
   assert.throws(
     () => phone.openTab(U, "msl-0a1b2c3d"),
-    (e) =>
-      e.extra.needs === "unlock" && e.extra.or === "lab up --target simulator",
+    (e) => e.extra.needs === "unlock" && e.extra.or === undefined,
   );
 
   fakeRunner(
@@ -1361,4 +1349,16 @@ test("needs tunnel-tool and tunnel say what to do, in these words", () => {
     "Run the command below again, or connect the phone with a cable.",
   ]);
   assert.equal(tun.then, "lab up --target device");
+});
+
+test("a needs error offers no simulator way out; only resign has an `or` (#14)", () => {
+  for (const needs of Object.keys(phone.NEEDS)) {
+    const { extra } = phone.needsError(needs, "boom");
+    assert.equal(extra.simulator, undefined, needs);
+    if (needs === "resign")
+      assert.equal(extra.or, "lab phone setup --udid <UDID> --team <ID>");
+    else assert.equal(extra.or, undefined, needs);
+    if (needs !== "simulator-off")
+      assert.ok(!extra.human.some((l) => /--target simulator/.test(l)), needs);
+  }
 });

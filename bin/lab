@@ -17,6 +17,8 @@ const usage = {
       "lab status [--check-update]  (what is running, the lease, the saved phone, whether this checkout of the lab is out of date)",
     phone:
       "lab phone setup --udid <phone UDID> --team <10-character team id> [--bundle-id <id>] [--autocorrection on|off] [--prediction on|off] [--focus on|off] [--focus-on-shortcut <name>] [--focus-off-shortcut <name>] | status | forget | restore [--forget] | focus test|off  (the physical iPhone; restore puts back the appearance, orientation and Lab Focus the lab changed; focus test turns Lab Focus on to check your shortcuts, focus off turns it off)",
+    simulator:
+      "lab simulator on | off | status  (whether this Mac may run the simulator: off until the owner runs `on` in their own terminal)",
     hold: "lab hold [--minutes N]  (keep the idle stop off while a person uses the simulator by hand: default 60 minutes, 1 to 120; takes no lease; `lab down` or a fresh boot ends it)",
     release: "lab release [--force]  (give up the simulator lease)",
     service:

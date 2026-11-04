@@ -5,6 +5,11 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+### Changed
+
+- **The simulator is off until you turn it on, and the iPhone is the default** ([issue #14](https://github.com/dividedby/mobile-safari-lab/issues/14), [ADR 0010](docs/adr/0010-simulator-off-by-default.md)). Agents kept choosing it because the docs offered it freely, which swamped a small Mac. Anything that would boot one or start a session on one now stops with `needs: simulator-off`, including `lab up` with no phone saved. **If you use the simulator, run `lab simulator on` once in your own terminal**; it's refused away from a terminal. `lab simulator off` and `status` are new too, and `lab status` shows `simulatorAllowed`.
+- `needs` errors no longer carry the `or: lab up --target simulator` way out, or the `simulator` field on `resign`. `or` remains only on `resign`, where it's another fix for the person. AGENTS.md and the skill now say to use the iPhone, and to use a simulator only if the owner asks or agrees.
+
 ### Fixed
 
 - `lab up` on a phone with a newer iOS than Xcode's SDK, with no valid WebDriverAgent build, failed with `needs: unknown` on both routes: Xcode refused a deployment target above its SDK ([issue #17](https://github.com/dividedby/mobile-safari-lab/issues/17)). The build now targets the SDK's version on such a phone (checked live: iOS 27.2 with Xcode 27.0, over Wi-Fi and the cable). If Xcode still refuses the target, the new `needs: xcode-update` says to update Xcode; any other unexplained failure on such a phone stays `unknown`, with a line in `human` about Xcode.

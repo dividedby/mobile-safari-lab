@@ -6,7 +6,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { PERL, HELPER, LOCK_NAME } from "../lib/signlock.js";
-import { setRunner } from "../lib/core.js";
+import { setRunner, saveState } from "../lib/core.js";
 import { CLOCK } from "../lib/safari.js";
 import { LOG_FILTERS, PLUGIN, pluginDir } from "../lib/appium.js";
 import { encodePng } from "../lib/png.js";
@@ -71,6 +71,7 @@ export function sandbox() {
   process.env.MSL_RUNS = path.join(dir, "runs");
   process.env.MSL_LAUNCH_AGENTS = path.join(dir, "LaunchAgents"); // never the real ones
   process.env.MSL_LOGS = path.join(dir, "Logs");
+  saveState({ simulatorAllowed: true }); // a Mac that has opted in; the tests of the refusal turn it off
   return dir;
 }
 

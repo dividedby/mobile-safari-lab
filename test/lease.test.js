@@ -98,10 +98,13 @@ test("acquire creates the lease, then renews it and keeps `since`", async () => 
     since: "2026-10-15T12:00:00.000Z",
     expires: "2026-10-15T12:20:00.000Z",
   });
-  assert.deepEqual(fs.readdirSync(stateDir()).sort(), [
-    "activity.json",
-    "lease.json",
-  ]); // no lock dir, no temp file
+  assert.deepEqual(
+    fs
+      .readdirSync(stateDir())
+      .filter((f) => f !== "state.json")
+      .sort(),
+    ["activity.json", "lease.json"],
+  ); // no lock dir, no temp file
 });
 
 test("another owner is refused with who, until when and how to take over", async () => {
@@ -296,10 +299,13 @@ test("a lock left by a crashed process is cleared once it is stale; a fresh one 
   fs.utimesSync(lock, old, old);
   assert.equal((await lease.acquire({ owner: "a" })).action, "created");
   assert.ok(!fs.existsSync(lock));
-  assert.deepEqual(fs.readdirSync(stateDir()).sort(), [
-    "activity.json",
-    "lease.json",
-  ]);
+  assert.deepEqual(
+    fs
+      .readdirSync(stateDir())
+      .filter((f) => f !== "state.json")
+      .sort(),
+    ["activity.json", "lease.json"],
+  );
 });
 
 test("takeoverNote names who was displaced, and is undefined when nobody was", () => {
