@@ -695,6 +695,34 @@ test("needsResign and hoursLeft use the given clock", () => {
   assert.equal(phone.hoursLeft("garbage", now), null);
 });
 
+test("needsResign skips a re-sign already made for this expiry, until it passes", () => {
+  const now = Date.parse("2026-10-16T12:00:00Z");
+  const at = (h) => new Date(now + h * 3600e3).toISOString();
+  const kept = (h) => ({ wdaExpires: at(h), resignKept: at(h) });
+  assert.equal(phone.needsResign(kept(10), now), false);
+  assert.equal(phone.resignKeptFor(kept(10), now), true);
+  assert.equal(phone.needsResign(kept(10), now, true), true, "forced");
+  assert.equal(phone.needsResign(kept(-1), now), true, "passed");
+  assert.equal(phone.resignKeptFor(kept(-1), now), false);
+  assert.equal(
+    phone.needsResign({ wdaExpires: at(10), resignKept: at(11) }, now),
+    true,
+    "another expiry",
+  );
+});
+
+test("centralTime writes an instant as US Central time", () => {
+  assert.equal(
+    phone.centralTime("2026-11-11T18:10:00.000Z"),
+    "2026-11-11 12:10 CT",
+  );
+  assert.equal(
+    phone.centralTime("2026-07-01T05:05:00.000Z"),
+    "2026-07-01 00:05 CT",
+  );
+  assert.equal(phone.centralTime("garbage"), null);
+});
+
 // --- classifier ---
 
 test("classify: failure text -> needs", () => {
@@ -1111,6 +1139,7 @@ test("readPhone checks the shape of the record", () => {
         teamId: TEAM,
         bundleId: "com.dividedby.msl-wda-abcd",
         wdaExpires: "2026-10-23T12:00:00.000Z",
+        resignKept: "2026-10-23T12:00:00.000Z",
       },
     }).bundleId,
     "com.dividedby.msl-wda-abcd",
@@ -1128,6 +1157,18 @@ test("readPhone checks the shape of the record", () => {
       teamId: TEAM,
       bundleId: "com.dividedby.msl-wda-abcd",
       wdaExpires: "soon",
+    },
+    {
+      udid: U,
+      teamId: TEAM,
+      bundleId: "com.dividedby.msl-wda-abcd",
+      resignKept: "soon",
+    },
+    {
+      udid: U,
+      teamId: TEAM,
+      bundleId: "com.dividedby.msl-wda-abcd",
+      resignKept: 5,
     },
   ]) {
     assert.throws(
