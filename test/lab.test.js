@@ -2944,6 +2944,11 @@ test("lab up with a phone last reached over Wi-Fi that is now silent stops at th
     [false, "phone", "tunnel", "lab up --target device"],
   );
   assert.equal(out.or, undefined);
+  assert.match(
+    out.human.join(" "),
+    /wake and unlock it/,
+    "the Wi-Fi steps, not the tunnel's",
+  );
   assert.equal(
     loadState().phone.seen.via,
     "tunnel",

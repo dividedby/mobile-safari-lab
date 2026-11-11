@@ -586,7 +586,7 @@ test("phoneStatus: a list that times out is tried once more; two timeouts are ne
   assert.equal(s.listTimedOut, true);
 });
 
-test("phoneStatus: a phone missing from the list is marked notListed; withRoute gives a Wi-Fi phone its own steps once, without a second 'last reached' note (#25)", () => {
+test("phoneStatus: a phone missing from the list is marked notListed; withRoute gives any unreachable Wi-Fi phone (missing or silent) its own steps, with one 'last reached' note (#25)", () => {
   fakeRunner(devicectl({ "list devices": { json: "devices-absent.json" } }));
   const s = phone.phoneStatus(U, { usbmux: () => true });
   assert.equal(s.notListed, true);
@@ -594,21 +594,21 @@ test("phoneStatus: a phone missing from the list is marked notListed; withRoute 
   const wifi = phone.withRoute(s, { seen: { via: "tunnel" } });
   assert.equal(wifi.needs, "tunnel");
   assert.equal(wifi.error.match(/last reached over Wi-Fi/g).length, 1);
-  assert.deepEqual(wifi.human, phone.WIFI_LIST_HUMAN);
+  assert.deepEqual(wifi.human, phone.WIFI_REACH_HUMAN);
   const e = phone.statusError(wifi, wifi.needs, wifi.error);
-  assert.deepEqual(e.extra.human, phone.WIFI_LIST_HUMAN);
+  assert.deepEqual(e.extra.human, phone.WIFI_REACH_HUMAN);
   assert.equal(e.extra.then, "lab up --target device");
   assert.deepEqual(
     phone.statusError({ needs: "tunnel" }, "tunnel", "x").extra.human,
     phone.NEEDS.tunnel.human,
     "the generic steps are left alone",
   );
-  // Other lost routes keep the generic tunnel text.
+  // A phone that is listed but does not answer gets the same steps: it can't be reached either.
   const silent = phone.withRoute(
     { reachable: false, needs: "cable", error: "x" },
     { seen: { via: "tunnel" } },
   );
-  assert.equal(silent.human, undefined);
+  assert.deepEqual(silent.human, phone.WIFI_REACH_HUMAN);
 });
 
 test("phoneStatus uses the injected module-level usbmux check", () => {
@@ -1401,6 +1401,28 @@ test("withRoute: a phone that is gone and was last reached over Wi-Fi needs tunn
   assert.match(
     out.error,
     /^devicectl lockState timed out after 20s \(last reached over Wi-Fi\)$/,
+  );
+  assert.deepEqual(
+    out.human,
+    phone.WIFI_REACH_HUMAN,
+    "listed but not answering: the Wi-Fi steps too",
+  );
+  // CoreDeviceError 4016 (seen live right after the phone's Wi-Fi went off) runs past the 400-character cut: the note survives it.
+  const long = phone.withRoute(
+    {
+      ...gone,
+      error: `ERROR: The device is not able to fulfill the requested usage assertion requirements. ${"x".repeat(500)}`,
+    },
+    wifi,
+  );
+  assert.equal(long.needs, "tunnel");
+  assert.match(
+    phone.redactMessage(long.error),
+    /\.\.\. \(last reached over Wi-Fi\)$/,
+  );
+  assert.deepEqual(
+    phone.statusError(long, "tunnel", long.error).extra.human,
+    phone.WIFI_REACH_HUMAN,
   );
   assert.equal(
     phone.withRoute(
