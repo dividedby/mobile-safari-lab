@@ -95,7 +95,7 @@ it again whenever something seems stuck; on a healthy setup it changes nothing. 
 - **iPhone:** about 50 s the first time (WebDriverAgent is built and installed), 14 to 18 s warm.
   WebDriverAgent is signed again once when under 24 hours are left. Xcode keeps a still-valid profile
   (seen kept with 23.6 h left), so the expiry usually does not move: the run still succeeds, says
-  `phone.expiryMoved: false` and gives a `phone.warning` with the expiry in Central time. A run that
+  `phone.expiryMoved: false`. Every run in those last 24 hours gives a `phone.warning` with the expiry in Central time. A run that
   goes past it loses WebDriverAgent; the lab does not rebuild again for that expiry, and the first
   `lab up` after it has passed signs again. `--resign` always deletes the build and signs again. Over Wi-Fi a `tunnel` step comes between `phone` and
   `session` (up to 45 s for a new tunnel; none when a live session is reused), and the session
