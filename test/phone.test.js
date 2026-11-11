@@ -542,6 +542,75 @@ test("phoneStatus: phone absent from the list, unpaired, and devicectl failing",
   assert.match(broken.error, /unable to find utility/);
 });
 
+test("phoneStatus: a list that times out is tried once more; two timeouts are needs cable with their own marks, never unknown (#25)", () => {
+  let n = 0;
+  const calls = fakeRunner((cmd, args) => {
+    if (cmd !== "xcrun") return undefined;
+    if (args.includes("lockState")) {
+      fs.writeFileSync(
+        args[args.indexOf("--json-output") + 1],
+        fixture("lock-unlocked.json"),
+      );
+      return undefined;
+    }
+    n++;
+    if (n === 1) return { code: 124, stderr: "timed out after 30s" };
+    fs.writeFileSync(
+      args[args.indexOf("--json-output") + 1],
+      fixture("devices-cable.json"),
+    );
+    return undefined;
+  });
+  const ok = phone.phoneStatus(U, { usbmux: () => true });
+  assert.equal(ok.reachable, true);
+  assert.equal(calls.filter((c) => c.includes("list")).length, 2);
+
+  const slow = fakeRunner(() => ({ code: 124, stderr: "timed out after 30s" }));
+  const twice = phone.phoneStatus(U, { usbmux: () => true });
+  assert.deepEqual(
+    [twice.reachable, twice.needs, twice.listTimedOut, twice.notListed],
+    [false, "cable", true, undefined],
+  );
+  assert.equal(
+    twice.error,
+    "devicectl list devices timed out twice (30 s each)",
+  );
+  assert.equal(slow.length, 2);
+
+  // A caller that polls asks for one try and its own time limit.
+  const once = fakeRunner(() => ({ code: 124 }));
+  const s = phone.phoneStatus(U, { listMs: 4200, retryTimeout: false });
+  assert.equal(once.length, 1);
+  assert.equal(once.opts[0].timeoutMs, 4200);
+  assert.equal(s.error, "devicectl list devices timed out after 4 s");
+  assert.equal(s.listTimedOut, true);
+});
+
+test("phoneStatus: a phone missing from the list is marked notListed; withRoute gives a Wi-Fi phone its own steps once, without a second 'last reached' note (#25)", () => {
+  fakeRunner(devicectl({ "list devices": { json: "devices-absent.json" } }));
+  const s = phone.phoneStatus(U, { usbmux: () => true });
+  assert.equal(s.notListed, true);
+  assert.equal(phone.withRoute(s, { seen: { via: "usbmux" } }), s);
+  const wifi = phone.withRoute(s, { seen: { via: "tunnel" } });
+  assert.equal(wifi.needs, "tunnel");
+  assert.equal(wifi.error.match(/last reached over Wi-Fi/g).length, 1);
+  assert.deepEqual(wifi.human, phone.WIFI_LIST_HUMAN);
+  const e = phone.statusError(wifi, wifi.needs, wifi.error);
+  assert.deepEqual(e.extra.human, phone.WIFI_LIST_HUMAN);
+  assert.equal(e.extra.then, "lab up --target device");
+  assert.deepEqual(
+    phone.statusError({ needs: "tunnel" }, "tunnel", "x").extra.human,
+    phone.NEEDS.tunnel.human,
+    "the generic steps are left alone",
+  );
+  // Other lost routes keep the generic tunnel text.
+  const silent = phone.withRoute(
+    { reachable: false, needs: "cable", error: "x" },
+    { seen: { via: "tunnel" } },
+  );
+  assert.equal(silent.human, undefined);
+});
+
 test("phoneStatus uses the injected module-level usbmux check", () => {
   fakeRunner(devicectl(CABLE));
   phone.setUsbmux((id) => id === U);
