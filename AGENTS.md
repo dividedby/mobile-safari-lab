@@ -93,7 +93,7 @@ simulator, Safari session, the page) and reports each `step` with what it `found
 it again whenever something seems stuck; on a healthy setup it changes nothing. Expect:
 
 - **iPhone:** about 50 s the first time (WebDriverAgent is built and installed), 14 to 18 s warm.
-  Signing is signed again once when under 24 hours are left. Xcode keeps a still-valid profile
+  WebDriverAgent is signed again once when under 24 hours are left. Xcode keeps a still-valid profile
   (seen kept with 23.6 h left), so the expiry usually does not move: the run still succeeds, says
   `phone.expiryMoved: false` and gives a `phone.warning` with the expiry in Central time. A run that
   goes past it loses WebDriverAgent; the lab does not rebuild again for that expiry, and the first

@@ -42,7 +42,9 @@ is what shaped the design.
   - Profiles last 7 days. The WDA's expiry is read from its `embedded.mobileprovision` and cached
     as `wdaExpires`; below 24 hours (or unknown, or `--resign`) `lab up` deletes only
     `<appium home>/wda-device/Build/Products` (the path is asserted before deleting) so
-    `xcodebuild` signs it again. A forced re-sign that doesn't move the expiry is `needs: "resign"`.
+    `xcodebuild` signs it again. A re-sign that doesn't move the expiry is a success with `phone.warning`
+    (issue 27: Xcode keeps a still-valid profile); only a profile that has already run out after
+    signing is `needs: "resign"`.
   - A device holds 3 sideloaded apps per Apple ID, and WDA takes one. A free account also gets 10
     new app IDs a week, and app IDs are global: one registered by another team can't be used.
     So the bundle id is fixed and reused; a fresh one per run would burn the weekly allowance.
