@@ -919,13 +919,13 @@ test("checkPhone: a stuck CoreDevice (lockState timed out, tunnel connecting) ge
       transport: "wifi",
     },
   ];
-  const r = await tunnel.checkPhone(PU, () => looks.shift());
+  const r = await tunnel.checkPhone(PU, { status: () => looks.shift() });
   assert.equal(r.reachable, true);
   assert.equal(r.coreDeviceRestarted, true);
   assert.equal(w.core.kick, 1);
 
   // Once per command: a second stuck look has no second restart, and is `needs: tunnel`.
-  const again = await tunnel.checkPhone(PU, () => stuck);
+  const again = await tunnel.checkPhone(PU, { status: () => stuck });
   assert.equal(again.reachable, false);
   assert.equal(again.coreDeviceRestarted, undefined);
   assert.equal(again.needs, "tunnel");
@@ -933,7 +933,7 @@ test("checkPhone: a stuck CoreDevice (lockState timed out, tunnel connecting) ge
 });
 
 test("checkPhone: still stuck after the restart needs tunnel; other failures and a healthy phone cause no restart", async () => {
-  const r = await tunnel.checkPhone(PU, () => stuck);
+  const r = await tunnel.checkPhone(PU, { status: () => stuck });
   assert.deepEqual([r.coreDeviceRestarted, r.needs], [true, "tunnel"]);
   tunnel.coreDevice.done = false;
   w.core.kick = 0;
@@ -942,7 +942,7 @@ test("checkPhone: still stuck after the restart needs tunnel; other failures and
     { ...stuck, error: "devicectl failed" },
     { ...stuck, reachable: true },
   ]) {
-    assert.equal(await tunnel.checkPhone(PU, () => s), s);
+    assert.equal(await tunnel.checkPhone(PU, { status: () => s }), s);
   }
   assert.equal(w.core.kick, 0);
 });
@@ -1054,18 +1054,21 @@ test("lookForPhone: an interrupt (Ctrl-C) ends the wait", async () => {
 
 test("checkPhone: a Wi-Fi phone that is missing at first is looked for before the wedge check, and a listed one then goes on", async () => {
   const l = looks(missing, listed);
-  assert.equal(await tunnel.checkPhone(PU, l.status, WIFI_REC), listed);
+  assert.equal(
+    await tunnel.checkPhone(PU, { status: l.status, rec: WIFI_REC }),
+    listed,
+  );
   assert.equal(w.core.kick, 0);
   // Without the record (the old call) there is no wait.
   const none = looks(missing);
-  assert.equal(await tunnel.checkPhone(PU, none.status), missing);
+  assert.equal(await tunnel.checkPhone(PU, { status: none.status }), missing);
   assert.equal(none.asked.length, 1);
 });
 
 test("checkPhone: a restart that cannot be done (another program at the pid) is said in the error, nothing is killed", async () => {
   w.core.refuse = true;
   w.core.command = "/usr/bin/vim CoreDeviceService.txt";
-  const r = await tunnel.checkPhone(PU, () => stuck);
+  const r = await tunnel.checkPhone(PU, { status: () => stuck });
   assert.match(r.error, /is not CoreDeviceService, so it was left alone/);
   assert.deepEqual(killed, []);
 });
