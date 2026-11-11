@@ -586,7 +586,7 @@ test("phoneStatus: a list that times out is tried once more; two timeouts are ne
   assert.equal(s.listTimedOut, true);
 });
 
-test("phoneStatus: a phone missing from the list is marked notListed; withRoute gives a Wi-Fi phone its own steps once, without a second 'last reached' note (#25)", () => {
+test("phoneStatus: a phone missing from the list is marked notListed; withRoute gives any unreachable Wi-Fi phone (missing or silent) its own steps, with one 'last reached' note (#25)", () => {
   fakeRunner(devicectl({ "list devices": { json: "devices-absent.json" } }));
   const s = phone.phoneStatus(U, { usbmux: () => true });
   assert.equal(s.notListed, true);
