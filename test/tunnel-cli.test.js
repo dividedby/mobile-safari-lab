@@ -15,6 +15,8 @@ import * as svc from "../lib/service.js";
 import * as tunnel from "../lib/tunnel.js";
 import * as lease from "../lib/lease.js";
 import { handlers as lab } from "../lib/lab.js";
+import { WAIT } from "../lib/phone.js";
+import { withInterrupt, InterruptError } from "../lib/interrupt.js";
 import { runHost } from "../lib/tunnel-host.js";
 
 const PU = "00008000-000A1B2C3D4E5F60";
@@ -199,6 +201,7 @@ beforeEach(() => {
     listPollMs: 5,
     killMs: 50,
   });
+  Object.assign(WAIT, { wifiListMs: 80, listPollMs: 10 });
   tunnel.coreDevice.done = false;
   killed = [];
   svc.setKill((pid, sig) => {
@@ -942,6 +945,121 @@ test("checkPhone: still stuck after the restart needs tunnel; other failures and
     assert.equal(await tunnel.checkPhone(PU, () => s), s);
   }
   assert.equal(w.core.kick, 0);
+});
+
+// --- looking again for a Wi-Fi phone that the device list does not show (#25) ---
+
+const missing = {
+  udid: PU,
+  found: false,
+  reachable: false,
+  notListed: true,
+  needs: "cable",
+  error: "the saved phone is not in `devicectl list devices`",
+};
+const listed = {
+  udid: PU,
+  found: true,
+  reachable: true,
+  transport: "wifi",
+  via: "tunnel",
+};
+const WIFI_REC = { udid: PU, seen: { via: "tunnel" } };
+// A status stand-in that answers from `steps` (the last repeats) and records the options of each look.
+const looks = (...steps) => {
+  const asked = [];
+  const status = (udid, opts) => {
+    asked.push(opts);
+    return steps[Math.min(asked.length - 1, steps.length - 1)];
+  };
+  return { asked, status };
+};
+
+test("lookForPhone: a Wi-Fi phone that comes back into the list is returned at once, after the looks it took", async () => {
+  const l = looks(missing, missing, listed);
+  const r = await tunnel.lookForPhone(PU, WIFI_REC, { status: l.status });
+  assert.equal(r, listed);
+  assert.equal(l.asked.length, 3);
+  assert.equal(l.asked[0], undefined, "the first look is the plain one");
+  for (const o of l.asked.slice(1)) {
+    assert.equal(o.retryTimeout, false);
+    assert.ok(o.listMs >= 1000 && o.listMs <= WAIT.listMs);
+  }
+});
+
+test("lookForPhone: a look that timed out counts as not found, and the next one can find the phone", async () => {
+  const timedOut = { ...missing, notListed: undefined, listTimedOut: true };
+  const l = looks(missing, timedOut, listed);
+  assert.equal(
+    await tunnel.lookForPhone(PU, WIFI_REC, { status: l.status }),
+    listed,
+  );
+  assert.equal(l.asked.length, 3);
+});
+
+test("lookForPhone: a phone still missing when the window ends says how long it looked; the number of looks and the time are bounded", async () => {
+  const l = looks(missing);
+  const t0 = Date.now();
+  const r = await tunnel.lookForPhone(PU, WIFI_REC, { status: l.status });
+  const took = Date.now() - t0;
+  assert.equal(r.notListed, true);
+  assert.equal(r.needs, "cable", "withRoute makes it tunnel");
+  assert.match(
+    r.error,
+    /^the saved phone was not in `devicectl list devices` for \d+ s$/,
+  );
+  assert.ok(
+    took >= WAIT.wifiListMs && took < WAIT.wifiListMs + 500,
+    `${took} ms`,
+  );
+  assert.ok(
+    l.asked.length >= 3 &&
+      l.asked.length <= WAIT.wifiListMs / WAIT.listPollMs + 2,
+    `${l.asked.length} looks`,
+  );
+});
+
+test("lookForPhone: a phone last reached by cable, or never, and any other failure, get the first status at once", async () => {
+  for (const [rec, first] of [
+    [{ udid: PU, seen: { via: "usbmux" } }, missing],
+    [{ udid: PU }, missing],
+    [undefined, missing],
+    [WIFI_REC, listed],
+    [WIFI_REC, { ...missing, notListed: undefined, listTimedOut: true }],
+    [WIFI_REC, { ...stuck }],
+  ]) {
+    const l = looks(first);
+    assert.equal(
+      await tunnel.lookForPhone(PU, rec, { status: l.status }),
+      first,
+    );
+    assert.equal(l.asked.length, 1);
+  }
+});
+
+test("lookForPhone: an interrupt (Ctrl-C) ends the wait", async () => {
+  Object.assign(WAIT, { wifiListMs: 5000, listPollMs: 2000 });
+  const l = looks(missing);
+  await withInterrupt(async () => {
+    setTimeout(() => process.emit("SIGINT", "SIGINT"), 20);
+    const t0 = Date.now();
+    await assert.rejects(
+      tunnel.lookForPhone(PU, WIFI_REC, { status: l.status }),
+      InterruptError,
+    );
+    assert.ok(Date.now() - t0 < 1000);
+  });
+  assert.equal(l.asked.length, 1);
+});
+
+test("checkPhone: a Wi-Fi phone that is missing at first is looked for before the wedge check, and a listed one then goes on", async () => {
+  const l = looks(missing, listed);
+  assert.equal(await tunnel.checkPhone(PU, l.status, WIFI_REC), listed);
+  assert.equal(w.core.kick, 0);
+  // Without the record (the old call) there is no wait.
+  const none = looks(missing);
+  assert.equal(await tunnel.checkPhone(PU, none.status), missing);
+  assert.equal(none.asked.length, 1);
 });
 
 test("checkPhone: a restart that cannot be done (another program at the pid) is said in the error, nothing is killed", async () => {

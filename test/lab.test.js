@@ -49,6 +49,9 @@ import { REPO } from "../lib/core.js";
 
 const U = "6A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D";
 
+// The Wi-Fi wait for a phone missing from `devicectl list devices` (#25) is 30 s as shipped; the tests that reach it wait under a tenth of a second.
+Object.assign(phone.WAIT, { wifiListMs: 80, listPollMs: 10 });
+
 let app, sim, calls, dir, baseReply;
 
 before(async () => {
@@ -2949,6 +2952,184 @@ test("lab up with a phone last reached over Wi-Fi that is now silent stops at th
   assert.equal(createdSessions(), 0);
   savePhone({ seen: seenVia("usbmux") });
   assert.equal((await lab.up(["--target", "device"])).needs, "cable");
+});
+
+// `list devices` answers by call: each step is a file spec of the stand-in, the last one repeats. `base` has the other subcommands.
+const TIMED_OUT = { code: 124, stderr: "timed out after 30s" };
+const MISSING = ABSENT["list devices"];
+const LISTED = WIFI["list devices"];
+const listSteps = (base, ...steps) => {
+  const files = { ...base };
+  let n = 0;
+  Object.defineProperty(files, "list devices", {
+    enumerable: true,
+    get: () => steps[Math.min(n++, steps.length - 1)],
+  });
+  return files;
+};
+const listCalls = (c) => devicectlCalls(c).filter((x) => x.includes("list"));
+const savePhoneSeen = (via) =>
+  saveState({
+    phone: {
+      udid: PHONE,
+      teamId: TEAM,
+      bundleId: BUNDLE,
+      ...(via ? { seen: seenVia(via) } : {}),
+    },
+  });
+
+test("phone status: a list that times out is tried once more, and a phone that answers the second time is fine (#25)", async () => {
+  savePhoneSeen();
+  const c = phoneWorld(listSteps(CABLE, TIMED_OUT, CABLE["list devices"]));
+  const out = await lab.phone(["status"]);
+  assert.deepEqual(
+    [out.found, out.reachable, out.needs],
+    [true, true, undefined],
+  );
+  assert.equal(listCalls(c).length, 2);
+});
+
+test("phone status: two list timeouts say so and never need unknown; the Wi-Fi steps only for a phone last reached over Wi-Fi (#25)", async () => {
+  for (const [via, needs] of [
+    [undefined, "cable"],
+    ["usbmux", "cable"],
+    ["tunnel", "tunnel"],
+  ]) {
+    savePhoneSeen(via);
+    const c = phoneWorld(listSteps(CABLE, TIMED_OUT));
+    const out = await lab.phone(["status"]);
+    assert.deepEqual([out.reachable, out.needs], [false, needs], String(via));
+    assert.match(
+      out.error,
+      /^devicectl list devices timed out twice \(30 s each\)/,
+    );
+    assert.equal(listCalls(c).length, 2, "one more try, no polling");
+    assert.equal(
+      out.human.join(" ").includes("wake and unlock"),
+      needs === "tunnel",
+      String(via),
+    );
+  }
+});
+
+test("phone status waits for a Wi-Fi phone that is missing from the list, and reports it once it is listed (#25)", async () => {
+  savePhoneSeen("tunnel");
+  const c = phoneWorld(listSteps(WIFI, MISSING, MISSING, LISTED));
+  const out = await lab.phone(["status"]);
+  assert.deepEqual(
+    [out.found, out.reachable, out.needs],
+    [true, true, undefined],
+  );
+  assert.equal(listCalls(c).length, 3);
+});
+
+test("phone status for a Wi-Fi phone still missing at the limit says how long it looked, with the steps, within the bound (#25)", async () => {
+  savePhoneSeen("tunnel");
+  const c = phoneWorld(ABSENT);
+  const t0 = Date.now();
+  const out = await lab.phone(["status"]);
+  const took = Date.now() - t0;
+  assert.deepEqual(
+    [out.found, out.reachable, out.needs],
+    [false, false, "tunnel"],
+  );
+  assert.equal(
+    out.error,
+    "the saved phone was not in `devicectl list devices` for 0 s (last reached over Wi-Fi)",
+  ); // the window is 80 ms here, shown in whole seconds
+  const steps = out.human.join(" ");
+  assert.match(steps, /wake and unlock it/);
+  assert.match(steps, /same Wi-Fi network as the Mac/);
+  assert.match(steps, /connect the phone with a cable/);
+  assert.equal(out.then, "lab up --target device");
+  const { wifiListMs, listPollMs, listMs } = phone.WAIT;
+  assert.ok(took >= wifiListMs, `looked for ${took} ms`);
+  assert.ok(took < wifiListMs + 1000 + 500, `took ${took} ms`);
+  const looks = listCalls(c).length;
+  assert.ok(
+    looks >= 3 && looks <= wifiListMs / listPollMs + 2,
+    `${looks} looks`,
+  );
+  // Every look after the first has its own time limit within the window.
+  const limits = c.opts
+    .filter((_, i) => c[i][1] === "devicectl")
+    .map((o) => o.timeoutMs);
+  assert.equal(limits[0], listMs);
+  assert.ok(limits.slice(1).every((ms) => ms >= 1000 && ms <= listMs));
+});
+
+test("the Wi-Fi wait is 30 s in looks 5 s apart as shipped (#25)", () => {
+  // This file shortens them; the module's own values are what the docs promise.
+  const src = fs.readFileSync(path.join(REPO, "lib", "phone.js"), "utf8");
+  assert.match(src, /^ {2}wifiListMs: 30e3,$/m);
+  assert.match(src, /^ {2}listPollMs: 5e3,$/m);
+  assert.match(src, /^ {2}listMs: 30e3,$/m);
+});
+
+test("a phone last reached by cable that is missing from the list is needs cable at once: one look, no wait (#25)", async () => {
+  for (const via of ["usbmux", undefined]) {
+    savePhoneSeen(via);
+    const c = phoneWorld(ABSENT);
+    const t0 = Date.now();
+    const out = await lab.phone(["status"]);
+    assert.equal(out.needs, "cable");
+    assert.match(out.error, /not in `devicectl list devices`/);
+    assert.equal(listCalls(c).length, 1);
+    assert.ok(Date.now() - t0 < phone.WAIT.wifiListMs, "no wait");
+  }
+});
+
+test("lab up over Wi-Fi waits for the phone to come back into the list and then goes on (#25)", async () => {
+  const t = tunnelWorld();
+  deviceWorld(listSteps(WIFI, TIMED_OUT, MISSING, MISSING, LISTED), {
+    expires: inHours(72),
+    extra: t.extra,
+  });
+  savePhone({ seen: seenVia("tunnel") });
+  const out = await lab.up(["--target", "device"]);
+  assert.equal(out.ok, undefined, out.error);
+  assert.deepEqual([out.phone.transport, out.phone.via], ["wifi", "tunnel"]);
+  // The phone step took four (a timeout, its retry, two more looks); a later step lists once more.
+  assert.ok(listCalls(calls).length >= 4);
+});
+
+test("lab up over Wi-Fi with the phone still missing at the limit stops at the phone step with needs tunnel and the Wi-Fi steps (#25)", async () => {
+  deviceWorld(ABSENT);
+  savePhone({ seen: seenVia("tunnel") });
+  const out = await lab.up(["--target", "device"]);
+  assert.deepEqual(
+    [out.ok, out.failedStep, out.needs, out.then],
+    [false, "phone", "tunnel", "lab up --target device"],
+  );
+  assert.match(
+    out.error,
+    /^the saved phone was not in `devicectl list devices` for \d+ s \(last reached over Wi-Fi\)$/,
+  );
+  assert.match(out.human.join(" "), /wake and unlock it/);
+  assert.equal(createdSessions(), 0);
+});
+
+test("lab up over Wi-Fi with two list timeouts says so with the Wi-Fi steps, not unknown (#25)", async () => {
+  deviceWorld(listSteps(WIFI, TIMED_OUT));
+  savePhone({ seen: seenVia("tunnel") });
+  const out = await lab.up(["--target", "device"]);
+  assert.deepEqual([out.failedStep, out.needs], ["phone", "tunnel"]);
+  assert.match(
+    out.error,
+    /^devicectl list devices timed out twice \(30 s each\) \(last reached over Wi-Fi\)$/,
+  );
+  assert.match(out.human.join(" "), /wake and unlock it/);
+  assert.equal(listCalls(calls).length, 2);
+});
+
+test("lab up with a cable-seen phone missing from the list fails at once with needs cable (#25)", async () => {
+  deviceWorld(ABSENT);
+  savePhone({ seen: seenVia("usbmux") });
+  const t0 = Date.now();
+  const out = await lab.up(["--target", "device"]);
+  assert.deepEqual([out.failedStep, out.needs], ["phone", "cable"]);
+  assert.equal(listCalls(calls).length, 1);
+  assert.ok(Date.now() - t0 < phone.WAIT.wifiListMs);
 });
 
 test("phone forget removes the record, is idempotent, and leaves the simulator alone", async () => {

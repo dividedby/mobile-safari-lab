@@ -602,7 +602,7 @@ installed), and later ones 14 to 18 s; over Wi-Fi the warm target is about 20 s.
    no Xcode setting to turn on: Xcode 15 removed **Connect via network**, and a paired phone is
    reachable on the network by itself.
 2. Install pymobiledevice3 (step 4 of Setup) and run `lab service install` (it writes the tunnel agent).
-3. Run `lab up --target device` with the cable out. The `tunnel` step starts the tunnel host (up to 45 s);
+3. Run `lab up --target device` with the cable out. A phone that has dropped out of the Mac's device list (it idled, or the network blinked) is looked for again every 5 s for 30 s before the `phone` step fails, so that step can take up to about a minute; it then says `needs: tunnel`, with steps to wake and unlock the phone and check its network. The `tunnel` step starts the tunnel host (up to 45 s);
    the phone must be unlocked and on the same network as the Mac. Guest networks and any network
    with client isolation don't work. The lab then builds WebDriverAgent if there is no build,
    runs it detached on the phone (its output: `~/Library/Logs/msl-wda-device.log`, mode 0600)
@@ -798,7 +798,7 @@ saved), `simulator-off` (`lab simulator on`, your call), `xcode-account` (sign i
 on the phone when it asks to enable UI automation; a timeout the first time after a while
 usually means this), `cable` (the Mac can't reach the phone: unplugged, or not seen on the network; a phone that was last reached over Wi-Fi and is gone says `tunnel` instead),
 `tunnel-tool` (Wi-Fi needs pymobiledevice3 11.40.2 or newer), `tunnel` (no route over Wi-Fi: no tunnel
-within 45 s, it dropped, it reached another device, or the pymobiledevice3 version check timed out twice; see "Using Wi-Fi"), `resign` (signing expired or
+within 45 s, it dropped, it reached another device, the pymobiledevice3 version check timed out twice, or a phone last reached over Wi-Fi stayed out of the device list for 30 s; see "Using Wi-Fi"), `resign` (signing expired or
 rejected), `slots` (free-account app limit), `busy` (sideload is signing; try again in a minute), `tab` (the lab's tab can't be confirmed;
 `safari start` for a fresh one), `service` (`lab service install`), and `unknown` (run
 `lab phone status`). The full table, with the exact steps, is in [AGENTS.md](AGENTS.md).
