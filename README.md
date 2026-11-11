@@ -643,7 +643,7 @@ when less than 24 hours are left. Xcode keeps a provisioning profile that is sti
 kept with 23.6 hours left), so that re-sign usually leaves the expiry where it was: the lab
 re-signs once for that expiry, says `expiryMoved: false`, and does not rebuild again until the
 profile has expired; the first `lab up` after that signs again. `--resign` always deletes the build
-and signs again. Every `lab up` in those last 24 hours adds a `warning` with the expiry in Central time (a run that goes past it loses WebDriverAgent). `lab phone status` shows `wdaHoursLeft`. A free Apple ID allows **3 active sideloaded apps per device** (WebDriverAgent
+and signs again. The run that signs again adds a `warning` with the expiry in Central time (a run that goes past it loses WebDriverAgent); later runs that keep the build don't repeat it. `lab phone status` shows `wdaHoursLeft`. A free Apple ID allows **3 active sideloaded apps per device** (WebDriverAgent
 takes one) and **10 new app IDs per week**; app IDs are global, so a bundle id registered by
 one team can't be used by another (the default id carries the first four characters of the
 team). Apple can also reject a team's profiles outright (`0xe8008018`, then a cached

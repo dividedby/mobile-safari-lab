@@ -4478,8 +4478,11 @@ test("the next lab up with the same expiry does not rebuild; --resign still does
     stepOf(out, "phone").did,
     /^kept the WebDriverAgent build: it was re-signed for this expiry already, and Xcode keeps the valid profile until \d{4}-\d\d-\d\d \d\d:\d\d CT$/,
   );
-  assert.match(out.phone.warning, /^the signing runs out at .* CT /);
-  assert.doesNotMatch(out.phone.warning, /signing again did not move it/);
+  assert.equal(
+    out.phone.warning,
+    undefined,
+    "only the run that signed again warns",
+  );
   assert.equal(loadState().phone.resignKept, exp);
   endSession();
 
