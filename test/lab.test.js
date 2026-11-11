@@ -1898,7 +1898,7 @@ test("a --resign then keeps it and gets the run's flags after it (#106)", async 
   const w = deviceWorld(CABLE, { expires: inHours(5) });
   savePhone({ wdaExpires: inHours(5) });
   app.fx.createDelayMs = 100;
-  app.fx.onCreate = () => w.build(inHours(5));
+  app.fx.onCreate = () => w.build(inHours(-1)); // a profile that is past after signing is still needs:resign
   const out = await lab.up([
     "--allow-host",
     "a.test",
@@ -2568,6 +2568,7 @@ test("phone setup merges: other fields stay, and the signing expiry only while p
       teamId: TEAM,
       bundleId: BUNDLE,
       wdaExpires: expires,
+      resignKept: expires,
       extra: 1,
     },
   });
@@ -2578,6 +2579,7 @@ test("phone setup merges: other fields stay, and the signing expiry only while p
     teamId: TEAM,
     bundleId: BUNDLE,
     wdaExpires: expires,
+    resignKept: expires,
     extra: 1,
     keyboard: { autocorrection: true, prediction: true },
   });
@@ -4374,7 +4376,7 @@ test("--resign says when the signing expiry did not move (Xcode reused the valid
   assert.equal(out.phone.expiryMoved, false);
   assert.match(
     out.phone.note,
-    /--resign did not move the signing expiry.*renews it only near expiry/,
+    /--resign did not move the signing expiry: Xcode keeps the provisioning profile while it is valid$/,
   );
 });
 
@@ -4434,11 +4436,96 @@ test("an unreadable new expiry after signing is reported as unknown, not a failu
   );
 });
 
-test("a re-sign that still leaves under 24 h is needs:resign (the session stays open and the error says so)", async () => {
+// A second `lab up` the way the loop test does it: the first session is gone.
+const endSession = () => {
+  saveState({ session: null, backend: null, target: null });
+  app.fx.sessions.clear();
+};
+
+test("a re-sign that leaves the same expiry under 24 h is ok with a warning, and the expiry is remembered (#27)", async () => {
+  const exp = inHours(23.6);
+  const w = deviceWorld(CABLE, { expires: exp });
+  savePhone({ wdaExpires: exp });
+  app.fx.createDelayMs = 100;
+  app.fx.onCreate = () => w.build(exp); // Xcode keeps the profile that is still valid
+  const out = await lab.up([]);
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(out.needs, undefined);
+  assert.equal(out.phone.resigned, true);
+  assert.equal(out.phone.expiryMoved, false);
+  assert.match(out.phone.note, /^the signing expiry did not move/);
+  assert.equal(out.phone.wdaExpires, exp);
+  assert.match(
+    out.phone.warning,
+    /runs out at \d{4}-\d\d-\d\d \d\d:\d\d CT \(.*\), 23\.[56] h from now.*loses WebDriverAgent.*first `lab up` after it signs again/,
+  );
+  assert.ok(out.phone.warning.includes(exp), "the ISO is alongside");
+  assert.equal(loadState().phone.resignKept, exp);
+  assert.equal(loadState().session, "S1");
+});
+
+test("the next lab up with the same expiry does not rebuild; --resign still does (#27)", async () => {
+  const exp = inHours(23.6);
+  const w = deviceWorld(CABLE, { expires: exp });
+  savePhone({ wdaExpires: exp, resignKept: exp });
+  const marker = path.join(w.products, "marker");
+  fs.writeFileSync(marker, "x");
+  const out = await lab.up(["--target", "device"]);
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(out.phone.resigned, false);
+  assert.equal(fs.existsSync(marker), true, "the build was kept");
+  assert.match(
+    stepOf(out, "phone").did,
+    /^kept the WebDriverAgent build: it was re-signed for this expiry already, and Xcode keeps the valid profile until \d{4}-\d\d-\d\d \d\d:\d\d CT$/,
+  );
+  assert.equal(out.phone.warning, undefined);
+  assert.equal(loadState().phone.resignKept, exp);
+  endSession();
+
+  const forced = await lab.up(["--target", "device", "--resign"]);
+  assert.equal(forced.phone.resigned, true);
+  assert.equal(fs.existsSync(marker), false, "--resign deletes");
+  assert.match(stepOf(forced, "phone").did, /^deleted .*\(--resign\)/);
+});
+
+test("the same expiry twice: one rebuild, then none (#27)", async () => {
+  const exp = inHours(23.6);
+  const w = deviceWorld(CABLE, { expires: exp });
+  savePhone({ wdaExpires: exp });
+  app.fx.createDelayMs = 100;
+  app.fx.onCreate = () => w.build(exp);
+  const first = await lab.up([]);
+  assert.equal(first.phone.resigned, true);
+  endSession();
+  app.fx.onCreate = null;
+  fs.writeFileSync(path.join(w.products, "marker"), "x");
+  const second = await lab.up([]);
+  assert.equal(second.ok, undefined, second.error);
+  assert.equal(second.phone.resigned, false);
+  assert.equal(fs.existsSync(path.join(w.products, "marker")), true);
+});
+
+test("a re-sign that moves the expiry clears resignKept and has no warning (#27)", async () => {
+  const old = inHours(5);
+  const w = deviceWorld(CABLE, { expires: old });
+  savePhone({ wdaExpires: old, resignKept: old });
+  app.fx.createDelayMs = 100;
+  const fresh = inHours(24 * 7);
+  app.fx.onCreate = () => w.build(fresh);
+  const out = await lab.up(["--resign"]); // resignKept names this expiry, so only --resign rebuilds
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(out.phone.resigned, true);
+  assert.equal(out.phone.expiryMoved, undefined);
+  assert.equal(out.phone.warning, undefined);
+  assert.equal(loadState().phone.wdaExpires, fresh);
+  assert.equal(loadState().phone.resignKept, undefined);
+});
+
+test("a profile that is past after signing is needs:resign (the session stays open and the error says so)", async () => {
   const w = deviceWorld(CABLE, { expires: inHours(5) });
   savePhone({ wdaExpires: inHours(5) });
   app.fx.createDelayMs = 100;
-  app.fx.onCreate = () => w.build(inHours(5)); // Apple handed back the old profile
+  app.fx.onCreate = () => w.build(inHours(-1)); // Apple handed back an expired profile
   const out = await lab.up([]);
   assert.equal(out.ok, false);
   assert.equal(out.needs, "resign");
@@ -4446,6 +4533,23 @@ test("a re-sign that still leaves under 24 h is needs:resign (the session stays 
   assert.match(out.error, /session is open; `safari stop` ends it/);
   assert.equal(out.then, "lab up --target device --resign");
   assert.equal(loadState().session, "S1");
+  assert.equal(loadState().phone.resignKept, undefined);
+});
+
+test("an expired profile is rebuilt even when resignKept names it (#27)", async () => {
+  const gone = inHours(-2);
+  const w = deviceWorld(CABLE, { expires: gone });
+  savePhone({ wdaExpires: gone, resignKept: gone });
+  const marker = path.join(w.products, "marker");
+  fs.writeFileSync(marker, "x");
+  app.fx.createDelayMs = 100;
+  const fresh = inHours(24 * 7);
+  app.fx.onCreate = () => w.build(fresh);
+  const out = await lab.up(["--target", "device"]);
+  assert.equal(out.ok, undefined, out.error);
+  assert.equal(out.phone.resigned, true);
+  assert.equal(fs.existsSync(marker), false);
+  assert.equal(loadState().phone.resignKept, undefined);
 });
 
 test("the build folder is not deleted when it is a symlink", async () => {
