@@ -798,7 +798,7 @@ saved), `simulator-off` (`lab simulator on`, your call), `xcode-account` (sign i
 on the phone when it asks to enable UI automation; a timeout the first time after a while
 usually means this), `cable` (the Mac can't reach the phone: unplugged, or not seen on the network; a phone that was last reached over Wi-Fi and is gone says `tunnel` instead),
 `tunnel-tool` (Wi-Fi needs pymobiledevice3 11.40.2 or newer), `tunnel` (no route over Wi-Fi: no tunnel
-within 45 s, it dropped, it reached another device, the pymobiledevice3 version check timed out twice, or a phone last reached over Wi-Fi stayed out of the device list for 30 s; see "Using Wi-Fi"), `resign` (signing expired or
+within 45 s, it dropped, it reached another device, the pymobiledevice3 version check timed out twice, or the phone step can't reach a phone last reached over Wi-Fi, such as one that stayed out of the device list for 30 s; see "Using Wi-Fi"), `resign` (signing expired or
 rejected), `slots` (free-account app limit), `busy` (sideload is signing; try again in a minute), `tab` (the lab's tab can't be confirmed;
 `safari start` for a fresh one), `service` (`lab service install`), and `unknown` (run
 `lab phone status`). The full table, with the exact steps, is in [AGENTS.md](AGENTS.md).
