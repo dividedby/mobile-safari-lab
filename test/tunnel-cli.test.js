@@ -373,7 +373,7 @@ test("the tunnel host's status flags a host launchd won't start, and not one tha
   assert.deepEqual(
     svc.tunnelAgentStatus().issues.map((i) => i.replace(/\(.*?\)/, "(…)")),
     [
-      "launchd won't start the tunnel host (…); this happens when the node it runs was replaced, as a Homebrew upgrade does: run `lab service install` again",
+      "launchd won't start the tunnel host (…); this happens when its node was replaced, as a Homebrew upgrade does: run `lab service install` again",
     ],
   );
 });

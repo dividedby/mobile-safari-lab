@@ -856,7 +856,7 @@ test("idleStatus flags an idle stop launchd won't start, says refused, and lab s
   assert.equal(s.issues.length, 1);
   assert.match(
     s.issues[0],
-    /launchd won't start the idle stop \(spawn failed: OS_REASON_CODESIGNING\); this happens when the node it runs was replaced, as a Homebrew upgrade does: run `lab service install` again/,
+    /launchd won't start the idle stop \(spawn failed: OS_REASON_CODESIGNING\); this happens when its node was replaced, as a Homebrew upgrade does: run `lab service install` again/,
   );
   await svc.installIdle({ node, lab: labFile() }); // boots it out and loads it again
   assert.deepEqual(
