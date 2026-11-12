@@ -53,6 +53,7 @@ import {
   NET,
   CLOCK,
   ELEMENT,
+  sheetOver,
 } from "../lib/safari.js";
 import { decodePng } from "../lib/png.js";
 import {
@@ -340,6 +341,13 @@ function sourceXml(opts) {
           `<XCUIElementTypeWebView x="0" y="0" width="414" height="896">\n${fx.webView.map((l) => node("XCUIElementTypeButton", ` label="${l.label.replace(/&/g, "&amp;")}"${rectAttrs({ x: l.x, y: l.y, width: l.width, height: l.height })}`)).join("\n")}\n</XCUIElementTypeWebView>`,
         ]
       : []),
+    // Other native nodes on screen (`fx.extraNodes`: [{ type, label, x, y, width, height }]), such as a share sheet's.
+    ...(fx.extraNodes ?? []).map((n) =>
+      node(
+        n.type,
+        ` label="${n.label}"${rectAttrs({ x: n.x, y: n.y, width: n.width, height: n.height })}`,
+      ),
+    ),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<XCUIElementTypeApplication label="Safari"${rectAttrs(fx.screen)}${extra}>\n${kids.join("\n")}\n</XCUIElementTypeApplication>`;
 }
@@ -4049,6 +4057,103 @@ test("swipe drags across the calibrated page area and releases the pointer", asy
   );
   assert.equal(posts("/actions").length, 2);
   probesGone();
+});
+
+// #26: a share sheet brings its own bar (seen as {0,0,422,524} on a 440-wide phone), which reads as Safari's by type.
+const SHEET_REFUSED =
+  /a system sheet \(such as Share\) is open over the lab's tab/;
+const shareSheet = () => {
+  fx.chrome = ["C1", "C2", "S1"];
+  fx.rects.S1 = { x: 0, y: 0, width: 414, height: 524 }; // covers about 60% of the page area (0, 48, 414, 750)
+  fx.extraNodes = [
+    {
+      type: "XCUIElementTypeCell",
+      label: "Jo Example-Contact",
+      x: 20,
+      y: 300,
+      width: 80,
+      height: 80,
+    },
+  ];
+};
+
+test("tap, tap --label, swipe and a page shot refuse with needs sheet while a sheet covers the page, and send nothing (#26)", async () => {
+  await start();
+  labelled({ label: "Senate", x: 100, y: 600, width: 60, height: 40 });
+  shareSheet();
+  for (const [name, args, again] of [
+    ["tap", ["#go"], "safari tap '#go'"],
+    ["tap", ["--label", "Senate"], "safari tap --label Senate"],
+    ["swipe", ["up"], "safari swipe up"],
+    ["shot", ["x", "--page"], "safari shot x --page"],
+    ["shot", ["y", "--element", "#go"], "safari shot y --element '#go'"],
+  ]) {
+    const e = await failing(safari[name](args));
+    assert.match(e.message, SHEET_REFUSED, name);
+    assert.equal(e.extra.needs, "sheet", name);
+    assert.match(e.extra.human.join(" "), /close it on the phone/i, name);
+    assert.equal(e.extra.then, again, name);
+    assert.equal(e.skipArtifacts, true, name);
+    assert.ok(
+      !JSON.stringify([e.message, e.extra]).includes("Jo Example"),
+      name,
+    );
+  }
+  assert.equal(taps().length, 0);
+  assert.equal(posts("/actions").length, 0);
+  assert.equal(
+    log.filter(([m, u]) => m === "GET" && u.endsWith("/screenshot")).length,
+    0,
+  );
+  assert.ok(
+    !fs
+      .readFileSync(path.join(loadState().run, "run.log"), "utf8")
+      .includes("Jo Example"),
+  );
+  probesGone();
+  // The sheet gone: Safari's own bars are tapped around as before.
+  fx.chrome = ["C1", "C2"];
+  fx.extraNodes = [];
+  await safari.tap(["#go"]);
+  assert.equal(taps().length, 1);
+});
+
+test("a bar is a sheet only when it covers a third of the page: Safari's own bars never do, in portrait or landscape (#26)", () => {
+  const portrait = { x: 0, y: 62, width: 440, height: 736 };
+  const landscape = { x: 62, y: 0, width: 832, height: 380 };
+  const bars = (area, ...rects) => sheetOver(rects, area);
+  assert.equal(
+    bars(
+      portrait,
+      { x: 0, y: 0, width: 440, height: 62 },
+      { x: 0, y: 860, width: 440, height: 96 },
+    ),
+    null,
+  ); // status area and bottom toolbar
+  assert.equal(bars(portrait, { x: 0, y: 690, width: 440, height: 110 }), null); // a tall bottom bar with the address field
+  assert.equal(
+    bars(
+      landscape,
+      { x: 0, y: 0, width: 956, height: 50 },
+      { x: 0, y: 340, width: 956, height: 52 },
+    ),
+    null,
+  );
+  assert.equal(bars(portrait, { x: 0, y: 62, width: 440, height: 240 }), null); // just under a third
+  assert.deepEqual(bars(portrait, { x: 0, y: 62, width: 440, height: 250 }), {
+    x: 0,
+    y: 62,
+    width: 440,
+    height: 250,
+  });
+  assert.deepEqual(bars(portrait, { x: 0, y: 0, width: 422, height: 524 }), {
+    x: 0,
+    y: 0,
+    width: 422,
+    height: 524,
+  }); // the one seen in #26
+  assert.ok(bars(landscape, { x: 62, y: 100, width: 832, height: 280 }));
+  assert.equal(bars(portrait, { x: "n/a" }), null); // no rectangle: left to the guard, which fails closed
 });
 
 test("a control of Safari's with no usable rectangle fails the chrome guard closed", async () => {
@@ -12895,9 +13000,9 @@ test("shot --page also drops the top safe-area inset, in points (CSS px times th
   fx.rects.C2 = { x: 0, y: 40, width: 414, height: 40 };
   out = await safari.shot(["--page"]);
   assert.deepEqual(out.points.crop, { x: 0, y: 80, width: 414, height: 670 });
-  // Nothing to shoot: the controls fill the area.
+  // Controls that fill the area are a sheet over the page (#26), not something to cut around.
   fx.rects.C1 = { x: 0, y: 0, width: 414, height: 900 };
-  await assert.rejects(safari.shot(["--page"]), /nothing of the page is left/);
+  await assert.rejects(safari.shot(["--page"]), /a system sheet/);
   probesGone();
 });
 
