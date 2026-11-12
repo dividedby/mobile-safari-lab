@@ -166,7 +166,8 @@ safari source | safari ui | safari url | safari refresh
   `safari select` (below), which also blurs the `<select>`; otherwise `safari refresh` closes it (the page reloads, so
   its state is lost). `click` is a script click and isn't checked. The check reads the page only, so a menu whose
   element a script has already blurred isn't caught. `safari open` to an address that differs only by its `#fragment` doesn't
-  load a new page, so it doesn't close a menu either.
+  load a new page, so it doesn't close a menu either. Checked on the iPhone (iOS 27.2, 2026-11-11): a tap with a `<select>`'s
+  menu open is refused, and once a person picks an option iOS takes the focus off the `<select>`, so the next tap goes through.
 - **`safari select <css> --option <text> | --value <v> | --index <n>`** ([#24](https://github.com/dividedby/mobile-safari-lab/issues/24))
   chooses one option of a `<select>` with a page script, on both targets: it sets the index, then sends `input` and
   `change` (bubbling), as a person's choice does. It does not use the native picker, so it tests the page's handling of
@@ -175,8 +176,9 @@ safari source | safari ui | safari url | safari refresh
   found with the selectors of `click`; give it by css (`#race`, `select[name=race]`), since its visible text, which
   `--text` matches, is all its options' text run together. Output: `selected`, `matches`, the option's `index`, `text` and `value`, and `changed`
   (`false` when it was already chosen: then no events are sent, as when a person picks it again). A `<select>` that had the
-  focus is blurred afterwards (`blurred: true`, and `stillFocused` says whether the focus left); whether that closes the
-  iPhone's native menu hasn't been checked yet, so look with `safari shot --page`. Refused, with nothing changed: a target that
+  focus is blurred afterwards (`blurred: true`, and `stillFocused` says whether the focus left); on the iPhone that
+  closes its native menu (checked on iOS 27.2). The open menu's options are not in the web view (`safari ui` doesn't list
+  them, and `tap --label` can't reach them), so use `safari select` to choose one. Refused, with nothing changed: a target that
   isn't a `<select>`, `<select multiple>` (set it with `safari eval`), a disabled `<select>` or option (or one in a disabled
   `<optgroup>`), and no option or several matching (with the count). Custom dropdowns built from other elements: use `tap`.
 - **`safari appearance` and `safari orientation` change the owner's phone** (iPhone only; through `devicectl`, so no
