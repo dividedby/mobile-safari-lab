@@ -147,6 +147,7 @@ safari tap 'a.next' --navigates # then waits until the page has changed (also on
 safari back                     # the tab's previous page; waits until the page has changed (--timeout <ms>)
 safari keys "text"             # real key presses into the focused page field
 safari swipe up                # real scroll (or down)
+safari pinch out               # two-finger zoom in on the page (in: zoom out); --at <css> centres it on an element; reports scaleBefore/scaleAfter
 safari dismiss                 # close a system sheet (Share) the page opened over the lab's tab
 safari appearance light|dark   # iPhone only: the phone's light/dark mode; also `status`, `restore`
 safari orientation portrait|landscape   # iPhone only: the screen orientation; also `status`, `restore`
