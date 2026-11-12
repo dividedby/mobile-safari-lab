@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The page in Mobile Safari: start, open, refresh, back, eval, inject, click, type, tap, wait, keys,
+// The page in Mobile Safari: start, open, refresh, back, eval, inject, click, type, select, tap, wait, keys,
 // swipe, ui, source, shot, console, network, url, appearance and orientation (iPhone only, through
 // devicectl, restored at the end), stop. Everything else runs through Appium, on the
 // simulator or the saved iPhone (`start --target auto|device|simulator`, `--device <UDID>`);
@@ -27,6 +27,8 @@ const usage = {
     click:
       "safari click [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--navigates [--timeout <ms>]] [--]  (a script click on the element; --shadow: every argument is a selector, the last is the target; --navigates: then wait until the page has changed)",
     type: "safari type [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--] <text>  (set the text of a page field; same selectors as click)",
+    select:
+      "safari select [css] [--text <T> [--contains]] [--nth <N>] [--shadow] --option <text> | --value <v> | --index <n> [--]  (choose one option of a <select> by its visible text, its value or its index from 0; sets it and sends input and change as a person's choice does, by script, not through the native picker; same selectors as click)",
     tap: 'safari tap [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--navigates [--timeout <ms>]] [--]  or  safari tap --label "<a11y label>" [--navigates [--timeout <ms>]]  (a real touch on the element, or on the one native element with that label; --navigates: then wait until the page has changed)',
     wait: "safari wait [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--visible|--gone] [--timeout <ms>] [--]  or  safari wait --settled [--quiet <ms>] [--timeout <ms>]  (until the element exists, is visible or is gone; or until the page stops loading and changing; 10 s by default, 60 s at most)",
     keys: "safari keys [--no-verify] [--] <text>  (key events into the focused field; \\b is Backspace)",

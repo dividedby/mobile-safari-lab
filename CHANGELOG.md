@@ -5,6 +5,10 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+### Added
+
+- `safari select [css] --option <text> | --value <v> | --index <n>` chooses one option of a `<select>` ([#24](https://github.com/dividedby/mobile-safari-lab/issues/24)). `tap --label` couldn't pick a menu option when a page element had the same label, and only `eval` could set one. It takes the selectors of `click` and works on both targets. It sets the index with a page script, then sends `input` and `change` as a person's choice does; an option already chosen gets no events (`changed: false`). It reports the option's `index`, `text` and `value`. A `<select>` that had the focus, whose native menu is probably open (#23), is blurred afterwards (`blurred`, `stillFocused`). A target that isn't a `<select>`, `<select multiple>`, a disabled `<select>` or option, and no option or several matching are refused with nothing changed. It doesn't use the native picker. Not yet run on the phone: whether the blur closes the native menu.
+
 ### Fixed
 
 - `safari tap` made while a `<select>`'s menu or a date picker was open landed on the menu, not the page, and still reported `ok: true`, so the agent read a page that never got the tap or picked an option by accident ([#23](https://github.com/dividedby/mobile-safari-lab/issues/23)). `tap` (also `--label`) and `swipe` now check the page first: while a `<select>`, or an `<input>` of type `date`, `time`, `datetime-local`, `month`, `week` or `color`, has the focus (in an open shadow root too), they refuse with "has the focus, so its native menu or picker is probably open", name the element by tag, type and `id` or `name`, and send nothing. `safari refresh` closes it. The check reads the page only, not Safari's native UI, so a menu whose element a script has already blurred isn't caught. `click` is a script click and isn't checked. AGENTS.md also says that an `open` to a `#fragment` change on the same page doesn't close a menu.

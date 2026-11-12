@@ -361,6 +361,8 @@ const fresh = () => ({
   hasFocus: false, // document.hasFocus(): false in the simulator whenever its window is not frontmost
   tapFocus: null, // what a tap reports about the field: null (not a text field), true or false
   menuEl: null, // the page's active element for the open-menu check before a tap or swipe (#23)
+  selectEls: [], // the elements `safari select` resolves (#24): see fakeSelect
+  selectActive: null, // the page's active element while `safari select` runs
   geometryFor: null, // (n) => geometry: the nth measurement of the tapped element, when it moves
   measures: 0,
   deleteKey: true, // the keyboard's delete key is on screen
@@ -603,6 +605,27 @@ before(async () => {
         if (s.includes("scrollIntoView")) return send(true);
         if (s.includes("elementFromPoint")) return send(geometry());
         if (s.includes("field ? seen.includes(el)")) return send(fx.tapFocus); // after a tap: did the field take the focus
+        if (s.includes("const by = arguments[1];"))
+          // safari select: the real script, against a document holding fx.selectEls (the first for plain CSS)
+          return send(
+            new Function(
+              "document",
+              "args",
+              `return (function () {${s}}).apply(null, args);`,
+            )(
+              {
+                querySelector: () => fx.selectEls[0] ?? null,
+                querySelectorAll: (css) =>
+                  css === "x-app"
+                    ? [{ shadowRoot: { querySelectorAll: () => fx.selectEls } }]
+                    : fx.selectEls,
+                get activeElement() {
+                  return fx.selectActive;
+                },
+              },
+              json.args,
+            ),
+          );
         if (s.includes("const pickers = ["))
           // is a native menu open: the real script, against a document whose active element is fx.menuEl
           return send(
@@ -2364,6 +2387,201 @@ test("click and type with --nth and --shadow send the selector as a plain argume
     { css: "*", text: "Buy", contains: true, shadow: ["x-app"], nth: 1 },
   ]);
   assert.equal(lookups().length, 0);
+});
+
+// A <select> for `safari select` (#24): options are { text, value?, disabled?, group? } (group: { disabled }); it records the
+// events it gets, in order, and a blur takes the page's focus off it.
+const fakeSelect = (options, extra = {}) => {
+  const el = {
+    tagName: "SELECT",
+    multiple: false,
+    disabled: false,
+    selectedIndex: 0,
+    events: [],
+    dispatchEvent(e) {
+      el.events.push([e.type, e.bubbles, el.selectedIndex]);
+      return true;
+    },
+    blur() {
+      el.blurs = (el.blurs ?? 0) + 1;
+      if (fx.selectActive === el) fx.selectActive = null;
+    },
+    ...extra,
+  };
+  el.options = options.map((o) => ({
+    text: o.text,
+    value: o.value ?? o.text,
+    disabled: !!o.disabled,
+    parentElement: o.group
+      ? { tagName: "OPTGROUP", disabled: !!o.group.disabled }
+      : el,
+  }));
+  return el;
+};
+const RACES = [
+  { text: "Choose…", value: "" },
+  { text: "House", value: "h" },
+  { text: "  Senate ", value: "s" },
+  { text: "Governor", value: "g" },
+];
+
+test("select chooses by option text, value or index, then sends input and change as a user's choice does (#24)", async () => {
+  await start();
+  const el = fakeSelect(RACES);
+  fx.selectEls = [el];
+  assert.deepEqual(await safari.select(["#race", "--option", "Senate"]), {
+    selected: "#race",
+    matches: 1,
+    index: 2,
+    text: "Senate",
+    value: "s",
+    changed: true,
+  });
+  assert.deepEqual(el.events, [
+    ["input", true, 2],
+    ["change", true, 2],
+  ]); // the value is set before either event
+  assert.equal((await safari.select(["#race", "--value", "g"])).index, 3);
+  assert.equal((await safari.select(["#race", "--index", "1"])).text, "House");
+  assert.equal((await safari.select(["#race", "--value", ""])).text, "Choose…"); // an empty value is a value
+  assert.equal(el.selectedIndex, 0);
+  assert.equal(el.events.length, 8);
+  // The option already chosen: nothing is sent, as when a person picks it again.
+  const again = await safari.select(["#race", "--index", "0"]);
+  assert.equal(again.changed, false);
+  assert.equal(el.events.length, 8);
+  assert.equal(el.blurs, undefined); // it never had the focus
+});
+
+test("select refuses what isn't one choosable option, and changes nothing (#24)", async () => {
+  await start();
+  const refused = async (args, re) => {
+    await assert.rejects(safari.select(args), re);
+  };
+  fx.selectEls = [{ tagName: "BUTTON" }];
+  await refused(
+    ["#race", "--option", "Senate"],
+    /#race is a <button>, not a <select>/,
+  );
+  fx.selectEls = [{ tagName: "X<Y" }];
+  await refused(
+    ["#race", "--option", "Senate"],
+    /#race is an element that is not a <select>/,
+  ); // an odd tag is not echoed
+  fx.selectEls = [];
+  await refused(["#race", "--option", "Senate"], /no element matches #race/);
+  const multi = fakeSelect(RACES, { multiple: true });
+  fx.selectEls = [multi];
+  await refused(
+    ["#race", "--option", "Senate"],
+    /<select multiple>.*safari eval/,
+  );
+  const off = fakeSelect(RACES, { disabled: true });
+  fx.selectEls = [off];
+  await refused(["#race", "--option", "Senate"], /#race is disabled/);
+  const el = fakeSelect([
+    ...RACES,
+    { text: "Senate", value: "s2" },
+    { text: "Mayor", disabled: true },
+    { text: "Clerk", group: { disabled: true } },
+  ]);
+  fx.selectEls = [el];
+  await refused(
+    ["#race", "--option", "Senate"],
+    /2 options of #race have the text "Senate"; choose by --value or --index/,
+  );
+  await refused(
+    ["#race", "--option", "Judge"],
+    /no option of #race has the text "Judge" \(it has 7 options\)/,
+  );
+  await refused(
+    ["#race", "--value", "zz"],
+    /no option of #race has the value "zz"/,
+  );
+  await refused(
+    ["#race", "--index", "7"],
+    /--index 7 but #race has 7 options \(0 to 6\)/,
+  );
+  await refused(
+    ["#race", "--option", "Mayor"],
+    /option 5 of #race is disabled/,
+  );
+  await refused(
+    ["#race", "--option", "Clerk"],
+    /option 6 of #race is disabled/,
+  ); // in a disabled group
+  for (const s of [multi, off, el]) assert.deepEqual(s.events, []);
+  assert.equal(el.selectedIndex, 0);
+});
+
+test("select's flags are checked before anything is sent (#24)", async () => {
+  await start();
+  fx.selectEls = [fakeSelect(RACES)];
+  for (const [args, re] of [
+    [["#race"], /select: give one of --option, --value or --index/],
+    [
+      ["#race", "--option", "a", "--index", "1"],
+      /select: give one of --option, --value or --index/,
+    ],
+    [["#race", "--option", "  "], /select: --option is empty/],
+    [
+      ["#race", "--index", "-1"],
+      /select: --index must be a whole number from 0/,
+    ],
+    [
+      ["#race", "--index", "1.5"],
+      /select: --index must be a whole number from 0/,
+    ],
+    [["--option", "a"], /select: needs a css selector or --text/],
+    [["#race", "--label", "x", "--option", "a"], /unknown flag --label/],
+  ])
+    await assert.rejects(safari.select(args), re, args.join(" "));
+  assert.equal(
+    executesOf((s) => s.includes("const by = arguments[1];")).length,
+    0,
+  );
+  assert.equal(lookups().length, 0);
+});
+
+test("select reaches a <select> by --nth and --shadow, and blurs one that has the focus (#24)", async () => {
+  await start();
+  const [a, b, c] = [fakeSelect(RACES), fakeSelect(RACES), fakeSelect(RACES)];
+  fx.selectEls = [a, b, c];
+  fx.selectCount = { count: 3, hosts: 0, rooted: 0, step: -1, over: 0 };
+  const out = await safari.select([
+    "select",
+    "--nth",
+    "3",
+    "--option",
+    "House",
+  ]);
+  assert.deepEqual([out.selected, out.matches, out.index], ["select #3", 3, 1]);
+  assert.deepEqual(
+    [a.selectedIndex, b.selectedIndex, c.selectedIndex],
+    [0, 0, 1],
+  );
+  const sent = executesOf((s) => s.includes("const by = arguments[1];")).at(-1);
+  assert.deepEqual(sent.args, [{ css: "select", nth: 3 }, { option: "House" }]);
+  fx.selectCount = { count: 1, hosts: 0, rooted: 0, step: -1, over: 0 };
+  fx.selectEls = [a];
+  await safari.select(["--shadow", "x-app", "select", "--value", "g"]);
+  assert.deepEqual(
+    executesOf((s) => s.includes("const by = arguments[1];")).at(-1).args,
+    [{ css: "select", shadow: ["x-app"], nth: 1 }, { value: "g" }],
+  );
+  // Its menu is probably up while it has the focus (#23): set, then blurred, and whether the focus left is reported.
+  fx.selectActive = a;
+  const open = await safari.select(["select", "--option", "Senate"]);
+  assert.deepEqual(
+    [open.changed, open.blurred, open.stillFocused],
+    [true, true, false],
+  );
+  assert.equal(a.blurs, 1);
+  assert.equal(a.events.at(-1)[0], "change"); // the events go out before the blur
+  a.blur = () => {}; // a page that keeps the focus
+  fx.selectActive = a;
+  const kept = await safari.select(["select", "--option", "House"]);
+  assert.deepEqual([kept.blurred, kept.stillFocused], [true, true]);
 });
 
 test("type behaves the same for a plain and a text selector: keystrokes through the element value route", async () => {
@@ -4991,6 +5209,7 @@ const PAGE_COMMANDS = {
   inject: [],
   click: ["a"],
   type: ["a", "b"],
+  select: ["a", "--index", "0"],
   tap: ["a"],
   keys: ["x"],
   swipe: ["up"],
@@ -7937,6 +8156,29 @@ test("a device tap or swipe with a <select> focused is refused before anything r
   await assert.rejects(safari.tap(["--label", "Senate"]), MENU_REFUSED);
   await assert.rejects(safari.swipe(["up"]), MENU_REFUSED);
   assert.equal(sent(), base);
+  neverUnsafe();
+});
+
+test("a device select goes through the tab guard as one page script (#24)", async () => {
+  await startPhone();
+  const page = dv.pages[PAGE];
+  page.els = { "#race": 1 };
+  page.elCache = { "#race": fakeSelect(RACES) };
+  const out = await safari.select(["#race", "--option", "House"]);
+  assert.deepEqual(out, {
+    selected: "#race",
+    matches: 1,
+    index: 1,
+    text: "House",
+    value: "h",
+    changed: true,
+  });
+  assert.equal(
+    dv.executed.filter(
+      ([id, s]) => id === PAGE && s.includes("const by = arguments[1];"),
+    ).length,
+    1,
+  );
   neverUnsafe();
 });
 
