@@ -5,6 +5,8 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-11-11
+
 ### Fixed
 
 - `lab up --target device` and `lab phone status` over Wi-Fi gave up on the first try when `devicectl list devices` timed out or didn't list the phone, then worked a minute later with nothing changed ([#25](https://github.com/dividedby/mobile-safari-lab/issues/25)). A list that times out is now tried once more, and a phone last reached over Wi-Fi that isn't listed is looked for again every 5 s for 30 s, so the phone step can take up to about a minute before it fails. A timed-out list is no longer `needs: unknown`: it is `cable`, or `tunnel` for a phone last reached over Wi-Fi. If the phone is still missing, the error says how long the lab looked, with steps to wake and unlock the phone, check its Wi-Fi network and run the command again, or use the cable. A phone last reached by cable still gets `needs: cable` at once. The same steps come whenever the phone step can't reach a phone last reached over Wi-Fi, including one still listed that doesn't answer (seen live: CoreDeviceError 4016 just after the phone's Wi-Fi went off, which had the generic tunnel steps), and the error keeps its "(last reached over Wi-Fi)" note: a long devicectl text cut it off.
