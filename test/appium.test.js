@@ -30,7 +30,7 @@ import {
 import { OFF_WARNING } from "../lib/signlock.js";
 import { cli, loadState, saveState, newRun, REPO } from "../lib/core.js";
 import * as tunnelLib from "../lib/tunnel.js";
-import { InterruptError, withInterrupt } from "../lib/interrupt.js";
+import { InterruptError, withInterrupt, hasActed } from "../lib/interrupt.js";
 import * as phoneLib from "../lib/phone.js";
 import {
   SERVICE,
@@ -55,6 +55,7 @@ import {
   ELEMENT,
   sheetOver,
   sheetPlan,
+  pinchFingers,
 } from "../lib/safari.js";
 import { decodePng } from "../lib/png.js";
 import {
@@ -4068,6 +4069,31 @@ test("pinch in moves the fingers together; --at centres on an element; an unchan
     /the page's zoom didn't change.*user-scalable=no.*touch-action/,
   );
   probesGone();
+});
+
+test("pinchFingers keeps both fingers inside a narrow or zoomed page area, or refuses (#22)", () => {
+  const narrow = { x: 0, y: 48, width: 240, height: 300 };
+  const [l, r] = pinchFingers("out", { x: 120, y: 200 }, narrow);
+  for (const f of [l, r])
+    for (const p of [f.from, f.to])
+      assert.ok(
+        p.x >= narrow.x + 8 && p.x <= narrow.x + narrow.width - 8,
+        JSON.stringify(p),
+      );
+  assert.deepEqual([l.to.x, r.to.x], [36, 204]); // 35% of 240 is 84
+  assert.throws(
+    () => pinchFingers("out", { x: 80, y: 200 }, { ...narrow, width: 160 }),
+    /too close/,
+  ); // 56 pt is too little to pinch
+  assert.throws(
+    () =>
+      pinchFingers(
+        "in",
+        { x: 50, y: 200 },
+        { x: 0, y: 0, width: 100, height: 100 },
+      ),
+    /too close to the page's edge/,
+  );
 });
 
 test("pinch refuses before anything is sent: a bad direction or flag, a finger on Safari's toolbar, no room at the edge (#22)", async () => {
@@ -8852,7 +8878,15 @@ test("a device tap --label is not sent when the tab is not showing, or leaves af
 
 test("a device pinch checks the tab is showing right before the fingers go down, and --at must match (#22)", async () => {
   await startPhone();
-  const out = await safari.pinch(["out"]);
+  const out = await withInterrupt(async () => {
+    const r = await safari.pinch(["out"]);
+    assert.equal(
+      hasActed(),
+      true,
+      "a pinch counts as acting on the page, for an interrupt's words",
+    );
+    return r;
+  });
   assert.equal(out.pinched, "out");
   const at = lastIndex(([m, u]) => m === "POST" && u.endsWith("/actions"));
   assert.ok(at > 0);
