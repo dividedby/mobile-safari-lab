@@ -166,12 +166,12 @@ safari source | safari ui | safari url | safari refresh
   `safari select` (below), which also blurs the `<select>`; otherwise `safari refresh` closes it (the page reloads, so
   its state is lost). `click` is a script click and isn't checked. The check reads the page only, so a menu whose
   element a script has already blurred isn't caught. `safari open` to an address that differs only by its `#fragment` doesn't
-  load a new page, so it doesn't close a menu either.
+  load a new page, so it doesn't close a menu either. Checked on the iPhone (iOS 27.2, 2026-11-11): a tap with a `<select>`'s
+  menu open is refused, and once a person picks an option iOS takes the focus off the `<select>`, so the next tap goes through. Pickers and a `<select>` in a shadow root have only run with stand-ins.
 - **A system sheet over the page is `needs: sheet`** ([#26](https://github.com/dividedby/mobile-safari-lab/issues/26)). When the
   page opens one (`navigator.share` brings up the Share sheet), `tap`, `swipe` and `shot --page` / `--element` are refused
   with `needs: "sheet"` until the owner closes it on the phone; relay the `human` step, then run `then` (the same command).
-  No lab command closes it yet, so make a share test the last step of a run. `click` is a script click and isn't checked. Checked on the iPhone (iOS 27.2, 2026-11-11): a tap with a `<select>`'s
-  menu open is refused, and once a person picks an option iOS takes the focus off the `<select>`, so the next tap goes through. Pickers and a `<select>` in a shadow root have only run with stand-ins.
+  No lab command closes it yet, so make a share test the last step of a run. `click` is a script click and isn't checked.
 - **`safari select <css> --option <text> | --value <v> | --index <n>`** ([#24](https://github.com/dividedby/mobile-safari-lab/issues/24))
   chooses one option of a `<select>` with a page script, on both targets: it sets the index, then sends `input` and
   `change` (bubbling), as a person's choice does. It does not use the native picker, so it tests the page's handling of
