@@ -176,7 +176,7 @@ safari source | safari ui | safari url | safari refresh
   reported) or, without one, drags the sheet down from just inside its top edge, then looks again; `dismissed: true` with `via: "close"` or
   `"swipe"`, or `needs: "sheet"` if it is still there, and then the owner closes it on the phone (relay the `human`
   step). It touches nothing else in the sheet and refuses when no sheet is open. `safari dismiss --dry-run` says what it
-  would do (`via`, and the point or the drag, geometry only) and touches nothing: run it first on a sheet the lab hasn't
+  would do (`via`, and the point or the drag, geometry only) and sends no touch: run it first on a sheet the lab hasn't
   closed before. `click` is a script click and isn't
   checked. Checked on the iPhone (iOS 27.2, 2026-11-11): the Share sheet is caught; `safari refresh` does not close it
   (the page reloads under it), and `lab down` with it still up can't close the lab's tab, so it blanks the tab and asks
