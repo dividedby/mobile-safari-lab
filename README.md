@@ -1006,7 +1006,8 @@ phone's passcode on the phone.
   `visibility: hidden`, `display: none`, or under 2 px wide or high) the touch is still sent,
   with a `warning` saying it probably focused nothing: a page that reads keys from such a
   field (a 1x1 transparent input) is not focused by a tap on it, so check `focused`. `tap` and `swipe` also refuse to touch Safari's own toolbar
-  or address bar; `keys` refuses unless a page field (the page's active element) is focused and the keyboard is up. Don't type into the
+  or address bar, and refuse while a `<select>` or a date, time or colour input has the focus: iOS then shows its native
+  menu or picker over the page, so the touch would land on that (`safari refresh` closes it; [#23](https://github.com/dividedby/mobile-safari-lab/issues/23)); `keys` refuses unless a page field (the page's active element) is focused and the keyboard is up. Don't type into the
   address bar: it performs a web search.
 - **Finding by text, position or shadow root.** `click`, `type` and `tap` take `[css]`
   `--text <T>` `--contains` `--nth <N>` `--shadow` (a bare `--` ends the flags; `type`'s last

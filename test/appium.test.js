@@ -360,6 +360,7 @@ const fresh = () => ({
   focusedEl: null, // ... that element, when it is not the field `keys` types into
   hasFocus: false, // document.hasFocus(): false in the simulator whenever its window is not frontmost
   tapFocus: null, // what a tap reports about the field: null (not a text field), true or false
+  menuEl: null, // the page's active element for the open-menu check before a tap or swipe (#23)
   geometryFor: null, // (n) => geometry: the nth measurement of the tapped element, when it moves
   measures: 0,
   deleteKey: true, // the keyboard's delete key is on screen
@@ -602,6 +603,13 @@ before(async () => {
         if (s.includes("scrollIntoView")) return send(true);
         if (s.includes("elementFromPoint")) return send(geometry());
         if (s.includes("field ? seen.includes(el)")) return send(fx.tapFocus); // after a tap: did the field take the focus
+        if (s.includes("const pickers = ["))
+          // is a native menu open: the real script, against a document whose active element is fx.menuEl
+          return send(
+            new Function("document", `return (function () {${s}})();`)({
+              activeElement: fx.menuEl,
+            }),
+          );
         if (s.includes("return !!(a && (a.tagName")) {
           // is a page field focused: the real script, against a document whose hasFocus() is fx.hasFocus
           return send(
@@ -3673,6 +3681,73 @@ test("a failure to set it warns and still starts", async () => {
   assert.equal(loadState().session, "S1");
   assert.equal(errors.length, 1);
   assert.match(errors[0], /idle wait.*settings refused/);
+});
+
+// #23: while a <select> or picker input has the focus, iOS shows its native menu over the page, and a touch lands on that.
+const MENU_REFUSED =
+  /has the focus, so its native menu or picker is probably open.*nothing was sent.*safari refresh/;
+
+test("tap, tap --label and swipe refuse while a <select> or picker input has the focus, and send nothing (#23)", async () => {
+  await start();
+  labelled({ label: "Senate", x: 100, y: 300, width: 60, height: 40 });
+  for (const [el, named] of [
+    [{ tagName: "SELECT", id: "race" }, "<select> #race"],
+    [
+      { tagName: "INPUT", type: "date", getAttribute: () => "when" },
+      "<input type=date> name=when",
+    ],
+    [{ tagName: "INPUT", type: "color" }, "<input type=color>"],
+    // an id or name that isn't short and plain is left out, not echoed
+    [{ tagName: "SELECT", id: "a b<i>" }, "<select>"],
+  ]) {
+    fx.menuEl = el;
+    for (const run of [
+      () => safari.tap(["input"]),
+      () => safari.tap(["--label", "Senate"]),
+      () => safari.swipe(["up"]),
+    ]) {
+      const e = await failing(run());
+      assert.match(e.message, MENU_REFUSED);
+      assert.ok(e.message.includes(`a ${named} has the focus`), e.message);
+      assert.ok(!e.message.includes("<i>"), e.message);
+    }
+  }
+  assert.equal(taps().length, 0);
+  assert.equal(posts("/actions").length, 0);
+  // refused before the native tree is read or the probe placed
+  assert.ok(
+    !posts("/execute/sync").some(
+      ([, , b]) => b.script === "mobile: source" || kindOf(b) === "probe",
+    ),
+  );
+  probesGone();
+});
+
+test("the open-menu check follows open shadow roots, and lets a text field or nothing focused through (#23)", async () => {
+  await start();
+  labelled({ label: "Senate", x: 100, y: 300, width: 60, height: 40 });
+  fx.menuEl = {
+    tagName: "MY-PICKER",
+    shadowRoot: { activeElement: { tagName: "SELECT", id: "inner" } },
+  };
+  await assert.rejects(
+    safari.tap(["input"]),
+    /a <select> #inner has the focus/,
+  );
+  for (const el of [
+    { tagName: "INPUT", type: "text" },
+    { tagName: "TEXTAREA" },
+    { tagName: "BODY" },
+    null,
+  ]) {
+    fx.menuEl = el;
+    await safari.tap(["input"]);
+    await safari.tap(["--label", "Senate"]);
+    await safari.swipe(["up"]);
+  }
+  assert.equal(taps().length, 8);
+  assert.equal(posts("/actions").length, 4);
+  probesGone();
 });
 
 test("tap and swipe pause for the page to settle", async () => {
@@ -7843,6 +7918,24 @@ test("a device tap on a text field reports whether it took the focus", async () 
   assert.equal((await safari.tap(["#name"])).focused, false); // the page kept the focus elsewhere
   page.activeCss = "#name";
   assert.equal((await safari.tap(["#name"])).focused, true);
+  neverUnsafe();
+});
+
+test("a device tap or swipe with a <select> focused is refused before anything reaches the phone (#23)", async () => {
+  await startPhone();
+  const page = dv.pages[PAGE];
+  page.els = { "#race": 1, "#go": 1 };
+  page.tags = { "#race": "SELECT", "#go": "DIV" };
+  const sent = () =>
+    dlog.filter(
+      ([, u, b]) => b?.script === "mobile: tap" || u.endsWith("/actions"),
+    ).length;
+  assert.equal((await safari.tap(["#race"])).tapped, "#race"); // nothing focused yet: the tap that opens the menu goes out
+  const base = sent();
+  page.activeCss = "#race";
+  await assert.rejects(safari.tap(["#go"]), MENU_REFUSED);
+  await assert.rejects(safari.swipe(["up"]), MENU_REFUSED);
+  assert.equal(sent(), base);
   neverUnsafe();
 });
 
