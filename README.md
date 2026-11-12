@@ -363,6 +363,7 @@ safari open https://example.com/app --storage flag=on   # sets localStorage on t
 safari eval 'document.title'       # one expression gives its value; several statements need `return` (below)
 safari click '[data-testid="card-label"]'      # synthetic click
 safari type 'input[name=q]' 'cats'             # synthetic key events (isTrusted false)
+safari select '#race' --option 'Senate'        # one option of a <select> (also --value v, --index n from 0): set by script, sends input and change; not the native picker
 safari tap 'input[name=q]'         # scrolls the element into view first, then a real touch; keyboard comes up; says `focused: true|false` for a text field
 safari tap button --text 'Continue'              # by visible text (exact, whitespace collapsed); --contains for part of it; --nth 2 for the second match
 safari click li --nth 3            # the third match of a selector (also on tap and type)

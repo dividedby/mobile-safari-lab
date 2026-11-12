@@ -137,6 +137,7 @@ safari inject <file.user.js>   # a userscript (runs after load; `--reinject` on 
 safari inject --forget <file>  # drop one recorded file from `--reinject` (runs nothing); `--clear` drops them all
 safari eval 'document.title'   # an expression gives its value; several statements need `return`
 safari click <css>             # synthetic events (isTrusted false)
+safari select <css> --option "House"   # one option of a <select> (also --value v, --index n from 0); a script choice, not the picker
 safari tap <css>               # a real touch; brings up the keyboard on a field
 safari tap button --text OK    # by exact visible text; --contains, --nth N (1-based), --shadow host inner (open roots)
 safari tap --label "Share"     # the one native element in the web view with exactly this label
@@ -161,10 +162,23 @@ safari source | safari ui | safari url | safari refresh
   `<select>`, or an `<input>` of type `date`, `time`, `datetime-local`, `month`, `week` or `color`, has the focus, iOS shows
   its native menu or picker over the page, and a touch lands on that, not on the page. So `tap` (also `--label`) and `swipe`
   check the page's focused element first (following open shadow roots) and refuse with "has the focus, so its native menu
-  or picker is probably open", naming the element by tag, type and `id` or `name`; nothing is sent. Run `safari refresh` to
-  close it (the page reloads, so its state is lost). `click` is a script click and isn't checked. The check reads the page only, so a menu whose
+  or picker is probably open", naming the element by tag, type and `id` or `name`; nothing is sent. To choose an option, use
+  `safari select` (below), which also blurs the `<select>`; otherwise `safari refresh` closes it (the page reloads, so
+  its state is lost). `click` is a script click and isn't checked. The check reads the page only, so a menu whose
   element a script has already blurred isn't caught. `safari open` to an address that differs only by its `#fragment` doesn't
   load a new page, so it doesn't close a menu either.
+- **`safari select <css> --option <text> | --value <v> | --index <n>`** ([#24](https://github.com/dividedby/mobile-safari-lab/issues/24))
+  chooses one option of a `<select>` with a page script, on both targets: it sets the index, then sends `input` and
+  `change` (bubbling), as a person's choice does. It does not use the native picker, so it tests the page's handling of
+  the choice, not the picker itself. `--option` matches the option's visible text exactly (whitespace collapsed), `--value`
+  its value exactly (`""` too), and `--index` counts from 0 like `selectedIndex` (unlike `--nth`, from 1). The `<select>` is
+  found with the selectors of `click`; give it by css (`#race`, `select[name=race]`), since its visible text, which
+  `--text` matches, is all its options' text run together. Output: `selected`, `matches`, the option's `index`, `text` and `value`, and `changed`
+  (`false` when it was already chosen: then no events are sent, as when a person picks it again). A `<select>` that had the
+  focus is blurred afterwards (`blurred: true`, and `stillFocused` says whether the focus left); whether that closes the
+  iPhone's native menu hasn't been checked yet, so look with `safari shot --page`. Refused, with nothing changed: a target that
+  isn't a `<select>`, `<select multiple>` (set it with `safari eval`), a disabled `<select>` or option (or one in a disabled
+  `<optgroup>`), and no option or several matching (with the count). Custom dropdowns built from other elements: use `tap`.
 - **`safari appearance` and `safari orientation` change the owner's phone** (iPhone only; through `devicectl`, so no
   page or tab is involved, and a simulator session is refused: use `sim appearance` there). The lab writes the old value
   down first (the restore ledger, [ADR 0007](docs/adr/0007-phone-settings-restore-ledger.md)) and puts it back at `safari stop`, `lab down`, the idle stop and, after a crash, the next
