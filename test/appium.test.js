@@ -4242,7 +4242,7 @@ test("dismiss fails with needs sheet when the sheet stays, and sends nothing it 
   probesGone();
 });
 
-test("sheetPlan refuses landscape, and a bar with no room to tap above the card (#26)", () => {
+test("sheetPlan places the tap and drag from the phone's dry-run numbers, and refuses landscape and a bar with no room to tap (#26)", () => {
   const portrait = { width: 440, height: 956 };
   const area = { x: 0, y: 62, width: 440, height: 736 };
   assert.deepEqual(
