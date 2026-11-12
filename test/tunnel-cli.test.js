@@ -100,6 +100,12 @@ function world(extra = () => undefined) {
       args[1] === TUNNEL_TARGET
     ) {
       w.kicks++;
+      if (w.refuse > 0) {
+        // launchd won't spawn it (#39): its node was replaced since the agent was loaded
+        w.refuse--;
+        w.refusedNow = true;
+        return undefined;
+      }
       w.onKick(w.kicks);
       return undefined;
     }
@@ -133,7 +139,9 @@ function world(extra = () => undefined) {
         ? {
             stdout: w.alive
               ? `state = running\n\tpid = ${HOST_PID}\n`
-              : "state = not running\n",
+              : w.refusedNow
+                ? "state = not running\n\tlast exit reason = OS_REASON_CODESIGNING\n\tjob state = spawn failed\n"
+                : "state = not running\n",
           }
         : { code: 113, stderr: "Could not find service" };
     if (
@@ -150,6 +158,7 @@ function world(extra = () => undefined) {
       args[1] === TUNNEL_TARGET
     ) {
       w.tunnelLoaded = false;
+      w.refusedNow = false;
       return undefined;
     }
     if (cmd === "launchctl" && args[0] === "print" && args[1] === CORE_TARGET)
@@ -194,6 +203,8 @@ beforeEach(() => {
   process.env.MSL_PMD3 = path.join(dir, "bin", "pymobiledevice3");
   process.env.MSL_APPIUM_HOME = path.join(dir, "appium");
   Object.assign(tunnel.TUNNEL_WAIT, {
+    spawnMs: 30,
+    spawnPollMs: 5,
     upMs: 300,
     pollMs: 5,
     stopMs: 100,
@@ -310,6 +321,60 @@ test("ensureTunnel starts the host with kickstart (no -k) and waits for its reco
   assert.deepEqual(
     [again.found, again.did, w.kicks],
     ["tunnel up (fd00:1234::1)", null, before],
+  );
+});
+
+test("ensureTunnel: a host launchd won't start is loaded again once and kicked again, said in did (#39)", async () => {
+  installAgent();
+  w.refuse = 1;
+  const r = await tunnel.ensureTunnel(PHONE);
+  assert.equal(r.rec.state, "up");
+  assert.match(
+    r.did,
+    /^reloaded the tunnel host's LaunchAgent: launchd wouldn't start it \(OS_REASON_CODESIGNING; its node was replaced, as a Homebrew upgrade does\); started the tunnel host/,
+  );
+  const seq = launchctl().filter((l) => !l.startsWith("print"));
+  const k = seq.indexOf(`kickstart ${TUNNEL_TARGET}`);
+  assert.deepEqual(
+    seq.slice(k, k + 3).map((l) => l.split(" ")[0]),
+    ["kickstart", "bootout", "enable"],
+  );
+  assert.equal(seq.filter((l) => l.startsWith("bootstrap")).length >= 1, true);
+  assert.equal(w.kicks, 2);
+});
+
+test("ensureTunnel: refused again after the reload is needs service at once, not a 45 s wait for needs tunnel (#39)", async () => {
+  installAgent();
+  w.refuse = 2;
+  const start = Date.now();
+  const e = await tunnel.ensureTunnel(PHONE).then(
+    () => assert.fail("should refuse"),
+    (err) => err,
+  );
+  assert.equal(e.extra.needs, "service");
+  assert.match(
+    e.message,
+    /even after the lab loaded its LaunchAgent again \(OS_REASON_CODESIGNING\)/,
+  );
+  assert.match(e.extra.human.join(" "), /Homebrew upgrade/);
+  assert.equal(e.extra.then, "lab service install");
+  assert.equal(w.kicks, 2);
+  assert.ok(
+    Date.now() - start < tunnel.TUNNEL_WAIT.upMs,
+    "it didn't wait for the tunnel",
+  );
+});
+
+test("the tunnel host's status flags a host launchd won't start, and not one that is only between runs (#39)", () => {
+  installAgent();
+  w.tunnelLoaded = true;
+  assert.deepEqual(svc.tunnelAgentStatus().issues, []);
+  w.refusedNow = true;
+  assert.deepEqual(
+    svc.tunnelAgentStatus().issues.map((i) => i.replace(/\(.*?\)/, "(…)")),
+    [
+      "launchd won't start the tunnel host (…); this happens when its node was replaced, as a Homebrew upgrade does: run `lab service install` again",
+    ],
   );
 });
 

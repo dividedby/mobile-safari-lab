@@ -1053,7 +1053,9 @@ function world({
       // the idle stop agent has its own state
       if (args[0] === "print")
         return w.idleLoaded
-          ? { stdout: "state = not running\n" }
+          ? {
+              stdout: `state = not running\n${w.idleRefused ? "\tlast exit reason = OS_REASON_CODESIGNING\n\tjob state = spawn failed\n" : ""}`,
+            }
           : { code: 113, stderr: "Could not find service" };
       if (args[0] === "bootout") w.idleLoaded = false;
       if (args[0] === "bootstrap") w.idleLoaded = true;
@@ -6225,6 +6227,15 @@ test("status reports the hold and when the idle stop will next stop the lab", as
   const at = lease.lastActive();
   assert.equal(s.idleStop.nextStop.earliest, lease.localIso(at + 15 * 60e3));
   assert.match(s.idleStop.nextStop.note, /looks every \d+ s/);
+  // launchd won't start it (#39): no stop time, and the note says so
+  w.idleRefused = true;
+  s = await lab.status();
+  assert.equal(s.idleStop.nextStop.earliest, null);
+  assert.match(
+    s.idleStop.nextStop.note,
+    /launchd won't start the idle stop .*nothing stops the lab by itself: run `lab service install` again/,
+  );
+  w.idleRefused = false;
 
   const held = await lab.hold(["--minutes", "90"]);
   s = await lab.status();
