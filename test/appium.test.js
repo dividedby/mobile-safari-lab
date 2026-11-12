@@ -485,7 +485,10 @@ before(async () => {
         fx[key] = [];
         return send(out);
       }
-      if (p === "/actions") return send(null);
+      if (p === "/actions") {
+        fx.onActions?.(json);
+        return send(null);
+      }
       // The CSS window in the web context, not the screen: nothing may read it as one.
       if (p === "/window/rect")
         return webOnly() || send({ x: 0, y: 0, width: 980, height: 1773 });
@@ -544,6 +547,7 @@ before(async () => {
               ? void setTimeout(() => send(out), fx.sourceDelayMs)
               : send(out);
           }
+          if (s === "mobile: tap") fx.onNativeTap?.(json.args[0]);
           if (s === "mobile: tap" && fx.deleteKey) {
             const c = centre(fx.deleteKeyRect);
             if (json.args[0].x === c.x && json.args[0].y === c.y) clickDelete();
@@ -731,6 +735,7 @@ const BASE_WAIT = {
   charGapMs: 2,
   tapSettleMs: 5,
   swipeSettleMs: 5,
+  sheetSettleMs: 5,
   stableMs: 5,
   stableTries: 3,
   landMs: 30,
@@ -4063,6 +4068,7 @@ test("swipe drags across the calibrated page area and releases the pointer", asy
 const SHEET_REFUSED =
   /a system sheet \(such as Share\) is open over the lab's tab/;
 const shareSheet = () => {
+  fx.webView ??= []; // the page's own native nodes sit inside a web view, as on a real phone
   fx.chrome = ["C1", "C2", "S1"];
   fx.rects.S1 = { x: 0, y: 0, width: 414, height: 524 }; // covers about 60% of the page area (0, 48, 414, 750)
   fx.extraNodes = [
@@ -4116,6 +4122,120 @@ test("tap, tap --label, swipe and a page shot refuse with needs sheet while a sh
   fx.extraNodes = [];
   await safari.tap(["#go"]);
   assert.equal(taps().length, 1);
+});
+
+test("the sheet refusal carries the sheet's rectangle, and nothing else from it (#26)", async () => {
+  await start();
+  shareSheet();
+  const e = await failing(safari.tap(["#go"]));
+  assert.deepEqual(e.extra.sheet, { x: 0, y: 0, width: 414, height: 524 });
+});
+
+// safari dismiss: the sheet goes when its close button is tapped or it is dragged down (the hooks take it off the screen).
+const sheetGone = () => {
+  fx.chrome = ["C1", "C2"];
+  fx.extraNodes = [];
+};
+const CLOSE = {
+  type: "XCUIElementTypeButton",
+  label: "Close",
+  x: 370,
+  y: 20,
+  width: 30,
+  height: 30,
+};
+
+test("dismiss taps the sheet's one small Close button, then checks the sheet is gone (#26)", async () => {
+  await start();
+  shareSheet();
+  fx.extraNodes.push(CLOSE);
+  fx.onNativeTap = (pt) => {
+    if (pt.x === 385 && pt.y === 35) sheetGone();
+  };
+  const out = await safari.dismiss([]);
+  assert.deepEqual(out, {
+    dismissed: true,
+    via: "close",
+    sheet: { x: 0, y: 0, width: 414, height: 524 },
+  });
+  assert.deepEqual(
+    taps().map(([, , b]) => b.args[0]),
+    [{ x: 385, y: 35 }],
+  );
+  assert.equal(posts("/actions").length, 0);
+  assert.ok(!JSON.stringify(out).includes("Jo Example"));
+  assert.ok(
+    !fs
+      .readFileSync(path.join(loadState().run, "run.log"), "utf8")
+      .includes("Jo Example"),
+  );
+  probesGone();
+});
+
+test("dismiss drags the sheet down when there is no single small Close button outside the page (#26)", async () => {
+  await start();
+  for (const extra of [
+    [], // none (another language, say)
+    [CLOSE, { ...CLOSE, x: 20 }], // two
+    [{ ...CLOSE, width: 80, height: 80 }], // a contact named Close: too big for a close button
+    [{ ...CLOSE, width: 50, height: 50 }], // still bigger than a close button
+    [{ ...CLOSE, y: 600 }], // outside the sheet's rectangle
+  ]) {
+    log.length = 0;
+    shareSheet();
+    fx.extraNodes.push(...extra);
+    fx.webView = [{ label: "Close", x: 300, y: 600, width: 30, height: 30 }]; // the page's own Close is never a candidate
+    fx.onActions = () => sheetGone();
+    const out = await safari.dismiss([]);
+    assert.equal(out.via, "swipe");
+    assert.equal(taps().length, 0);
+    const finger = posts("/actions")[0][2].actions[0].actions;
+    const [from, to] = [finger[0], finger[3]];
+    assert.deepEqual([from.x, from.y], [207, 60]); // just inside the sheet's top edge, below the page's top (48)
+    assert.ok(to.y > from.y && to.y < 896, JSON.stringify(to)); // down, short of the screen's bottom edge
+    fx.webView = undefined;
+  }
+});
+
+test("dismiss --dry-run reports the plan, geometry only, and sends nothing (#26)", async () => {
+  await start();
+  shareSheet();
+  fx.extraNodes.push(CLOSE);
+  assert.deepEqual(await safari.dismiss(["--dry-run"]), {
+    dismissed: false,
+    dryRun: true,
+    via: "close",
+    at: { x: 385, y: 35 },
+    sheet: { x: 0, y: 0, width: 414, height: 524 },
+  });
+  fx.extraNodes.pop();
+  const drag = await safari.dismiss(["--dry-run"]);
+  assert.deepEqual(
+    [drag.via, drag.from, drag.to],
+    ["swipe", { x: 207, y: 60 }, { x: 207, y: 806 }],
+  );
+  assert.equal(taps().length + posts("/actions").length, 0);
+  assert.ok(!JSON.stringify(drag).includes("Jo Example"));
+  probesGone();
+});
+
+test("dismiss fails with needs sheet when the sheet stays, and refuses when there is none (#26)", async () => {
+  await start();
+  shareSheet();
+  fx.extraNodes.push(CLOSE);
+  const e = await failing(safari.dismiss([]));
+  assert.equal(e.extra.needs, "sheet");
+  assert.match(e.message, /still open after the lab tapped its close button/);
+  assert.equal(e.extra.then, "safari dismiss");
+  sheetGone();
+  log.length = 0;
+  await assert.rejects(
+    safari.dismiss([]),
+    /no system sheet is open over the lab's tab; nothing was done/,
+  );
+  assert.equal(taps().length + posts("/actions").length, 0);
+  await assert.rejects(safari.dismiss(["now"]), /usage: safari dismiss/);
+  probesGone();
 });
 
 test("a bar is a sheet only when it covers a third of the page: Safari's own bars never do, in portrait or landscape (#26)", () => {
@@ -5318,6 +5438,7 @@ const PAGE_COMMANDS = {
   tap: ["a"],
   keys: ["x"],
   swipe: ["up"],
+  dismiss: [],
   ui: [],
   source: [],
   shot: [],

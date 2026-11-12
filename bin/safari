@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The page in Mobile Safari: start, open, refresh, back, eval, inject, click, type, select, tap, wait, keys,
-// swipe, ui, source, shot, console, network, url, appearance and orientation (iPhone only, through
+// swipe, dismiss, ui, source, shot, console, network, url, appearance and orientation (iPhone only, through
 // devicectl, restored at the end), stop. Everything else runs through Appium, on the
 // simulator or the saved iPhone (`start --target auto|device|simulator`, `--device <UDID>`);
 // on the phone every page command goes through the tab guard (the run's own tab only, on the
@@ -33,6 +33,8 @@ const usage = {
     wait: "safari wait [css] [--text <T> [--contains]] [--nth <N>] [--shadow] [--visible|--gone] [--timeout <ms>] [--]  or  safari wait --settled [--quiet <ms>] [--timeout <ms>]  (until the element exists, is visible or is gone; or until the page stops loading and changing; 10 s by default, 60 s at most)",
     keys: "safari keys [--no-verify] [--] <text>  (key events into the focused field; \\b is Backspace)",
     swipe: "safari swipe up|down  (a touch drag across the page)",
+    dismiss:
+      "safari dismiss [--dry-run]  (close a system sheet, such as Share, that the page opened over the lab's tab: taps its Close button or drags it down, then checks it is gone; --dry-run says how it would, geometry only, and sends no touch)",
     ui: "safari ui  (Safari's native accessibility tree)",
     source: "safari source  (the page source)",
     shot: "safari shot [name] [--page | --element <css> [--text <T> [--contains]] [--nth <N>] [--shadow]] [--scale <0-1> | --width <px>] [--]  (screenshot into the run folder; --page keeps the web content only, --element one element, --scale or --width shrinks it; the cut is made in memory and a cut that fails writes nothing)",
