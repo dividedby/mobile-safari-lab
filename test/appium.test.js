@@ -4178,6 +4178,8 @@ test("dismiss drags the sheet down when there is no single small Close button ou
     [], // none (another language, say)
     [CLOSE, { ...CLOSE, x: 20 }], // two
     [{ ...CLOSE, width: 80, height: 80 }], // a contact named Close: too big for a close button
+    [{ ...CLOSE, width: 50, height: 50 }], // still bigger than a close button
+    [{ ...CLOSE, y: 600 }], // outside the sheet's rectangle
   ]) {
     log.length = 0;
     shareSheet();
@@ -4193,6 +4195,28 @@ test("dismiss drags the sheet down when there is no single small Close button ou
     assert.ok(to.y > from.y && to.y < 896, JSON.stringify(to)); // down, short of the screen's bottom edge
     fx.webView = undefined;
   }
+});
+
+test("dismiss --dry-run reports the plan, geometry only, and sends nothing (#26)", async () => {
+  await start();
+  shareSheet();
+  fx.extraNodes.push(CLOSE);
+  assert.deepEqual(await safari.dismiss(["--dry-run"]), {
+    dismissed: false,
+    dryRun: true,
+    via: "close",
+    at: { x: 385, y: 35 },
+    sheet: { x: 0, y: 0, width: 414, height: 524 },
+  });
+  fx.extraNodes.pop();
+  const drag = await safari.dismiss(["--dry-run"]);
+  assert.deepEqual(
+    [drag.via, drag.from, drag.to],
+    ["swipe", { x: 207, y: 60 }, { x: 207, y: 806 }],
+  );
+  assert.equal(taps().length + posts("/actions").length, 0);
+  assert.ok(!JSON.stringify(drag).includes("Jo Example"));
+  probesGone();
 });
 
 test("dismiss fails with needs sheet when the sheet stays, and refuses when there is none (#26)", async () => {

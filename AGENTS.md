@@ -172,10 +172,12 @@ safari source | safari ui | safari url | safari refresh
 - **A system sheet over the page is `needs: sheet`** ([#26](https://github.com/dividedby/mobile-safari-lab/issues/26)). When the
   page opens one (`navigator.share` brings up the Share sheet), `tap`, `swipe` and `shot --page` / `--element` are refused
   with `needs: "sheet"` (the output's `sheet` is its rectangle). Close it with `safari dismiss`: it taps the sheet's one
-  small button labelled exactly "Close" outside the web view (the label is compared, never reported) or, without one,
-  drags the sheet down from just inside its top edge, then looks again; `dismissed: true` with `via: "close"` or
+  button labelled exactly "Close" outside the web view, 44 pt or less and inside the sheet (the label is compared, never
+  reported) or, without one, drags the sheet down from just inside its top edge, then looks again; `dismissed: true` with `via: "close"` or
   `"swipe"`, or `needs: "sheet"` if it is still there, and then the owner closes it on the phone (relay the `human`
-  step). It touches nothing else in the sheet and refuses when no sheet is open. `click` is a script click and isn't
+  step). It touches nothing else in the sheet and refuses when no sheet is open. `safari dismiss --dry-run` says what it
+  would do (`via`, and the point or the drag, geometry only) and touches nothing: run it first on a sheet the lab hasn't
+  closed before. `click` is a script click and isn't
   checked. Checked on the iPhone (iOS 27.2, 2026-11-11): the Share sheet is caught; `safari refresh` does not close it
   (the page reloads under it), and `lab down` with it still up can't close the lab's tab, so it blanks the tab and asks
   the owner to close it: dismiss the sheet before `lab down`.
