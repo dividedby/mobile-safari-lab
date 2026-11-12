@@ -378,7 +378,7 @@ safari keys 'Hello'                # real key events into the focused page field
 safari keys --no-verify 'Hello'    # each character sent once, nothing checked
 safari keys $'\b\b'                # \b = Backspace (taps the keyboard's delete key, ~0.6 s each in the simulator, ~4 s on a self-resetting iPhone field); \n = Return
 safari swipe up                    # real scroll (also: down)
-safari dismiss                     # close a system sheet (Share) the page opened: taps its Close button or drags it down
+safari dismiss                     # close a system sheet (Share) the page opened: taps above it, or drags it down
 safari appearance dark             # iPhone only: the phone's light or dark mode (also: light, status, restore); put back at `safari stop` / `lab down` (see "Appearance and orientation")
 safari orientation landscape       # iPhone only: the screen orientation (also: portrait, status, restore); put back the same way
 safari ui                          # Safari's own UI tree → ui.xml + labels
