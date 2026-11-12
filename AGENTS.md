@@ -172,7 +172,8 @@ safari source | safari ui | safari url | safari refresh
   `change` (bubbling), as a person's choice does. It does not use the native picker, so it tests the page's handling of
   the choice, not the picker itself. `--option` matches the option's visible text exactly (whitespace collapsed), `--value`
   its value exactly (`""` too), and `--index` counts from 0 like `selectedIndex` (unlike `--nth`, from 1). The `<select>` is
-  found with the selectors of `click`. Output: `selected`, `matches`, the option's `index`, `text` and `value`, and `changed`
+  found with the selectors of `click`; give it by css (`#race`, `select[name=race]`), since its visible text, which
+  `--text` matches, is all its options' text run together. Output: `selected`, `matches`, the option's `index`, `text` and `value`, and `changed`
   (`false` when it was already chosen: then no events are sent, as when a person picks it again). A `<select>` that had the
   focus is blurred afterwards (`blurred: true`, and `stillFocused` says whether the focus left); whether that closes the
   iPhone's native menu hasn't been checked yet, so look with `safari shot --page`. Refused, with nothing changed: a target that
