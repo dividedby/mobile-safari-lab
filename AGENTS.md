@@ -171,13 +171,13 @@ safari source | safari ui | safari url | safari refresh
   menu open is refused, and once a person picks an option iOS takes the focus off the `<select>`, so the next tap goes through. Pickers and a `<select>` in a shadow root have only run with stand-ins.
 - **A system sheet over the page is `needs: sheet`** ([#26](https://github.com/dividedby/mobile-safari-lab/issues/26)). When the
   page opens one (`navigator.share` brings up the Share sheet), `tap`, `swipe` and `shot --page` / `--element` are refused
-  with `needs: "sheet"`. The output's `sheet` is the bar the lab took for it: on the iPhone (iOS 27.2) that is the dimmed
-  area above the sheet's card, from the top of the screen to the card's top edge. Close it with `safari dismiss`: it taps
-  once in that dimmed area (halfway between the page's top and the card), which closes a sheet on iOS, and if the sheet
-  is still there drags it down from just inside the card's top edge, looking again after each; `dismissed: true` with
+  with `needs: "sheet"`. The output's `sheet` is the bar the lab took for it: on the iPhone (iOS 27.2, portrait, from one dry
+  run) that is the dimmed area above the sheet's card, from the top of the screen to the card's top edge. Close it with `safari dismiss`: it taps
+  once in that dimmed area (halfway between the page's top and the card), which on iOS is meant to close it (not checked
+  live yet), and if the sheet is still there drags it down from just inside the card's top edge, looking again after each; `dismissed: true` with
   `via: "tap-outside"` or `"swipe"`, or `needs: "sheet"` if it is still there, and then the owner closes it on the phone
   (relay the `human` step). It reads no label and touches nothing in the sheet's card but the drag, and it refuses when
-  no sheet is open or the bar reaches near the screen's bottom (no card below it to read). `safari dismiss --dry-run`
+  no sheet is open, the phone is in landscape (not seen yet), or the bar reaches near the screen's bottom (no card below it to read). `safari dismiss --dry-run`
   reports the `tap` and the `drag` (geometry only) and sends no touch: run it first on a sheet the lab hasn't closed
   before. `click` is a script click and isn't
   checked. Checked on the iPhone (iOS 27.2, 2026-11-11): the Share sheet is caught; `safari refresh` does not close it

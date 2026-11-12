@@ -54,6 +54,7 @@ import {
   CLOCK,
   ELEMENT,
   sheetOver,
+  sheetPlan,
 } from "../lib/safari.js";
 import { decodePng } from "../lib/png.js";
 import {
@@ -4239,6 +4240,41 @@ test("dismiss fails with needs sheet when the sheet stays, and sends nothing it 
   await assert.rejects(safari.dismiss(["now"]), /usage: safari dismiss/);
   assert.equal(taps().length + posts("/actions").length, 0);
   probesGone();
+});
+
+test("sheetPlan refuses landscape, and a bar with no room to tap above the card (#26)", () => {
+  const portrait = { width: 440, height: 956 };
+  const area = { x: 0, y: 62, width: 440, height: 736 };
+  assert.deepEqual(
+    sheetPlan({
+      sheet: { x: 0, y: 0, width: 422, height: 508 },
+      screen: portrait,
+      area,
+    }),
+    {
+      tap: { x: 211, y: 285 },
+      drag: { from: { x: 211, y: 520 }, to: { x: 211, y: 860 } },
+      sheet: { x: 0, y: 0, width: 422, height: 508 },
+    },
+  ); // the phone's own numbers from the dry run
+  assert.throws(
+    () =>
+      sheetPlan({
+        sheet: { x: 0, y: 0, width: 956, height: 300 },
+        screen: { width: 956, height: 440 },
+        area: { x: 62, y: 0, width: 832, height: 380 },
+      }),
+    /landscape.*nothing was sent/,
+  );
+  assert.throws(
+    () =>
+      sheetPlan({
+        sheet: { x: 0, y: 0, width: 440, height: 120 },
+        screen: portrait,
+        area,
+      }),
+    /couldn't tell where the sheet's card is/,
+  ); // only 58 pt of dimmed area below the status bar
 });
 
 test("dismiss counts a sheet that is gone by the drag's own read as closed by the tap, and drags nothing (#26)", async () => {
