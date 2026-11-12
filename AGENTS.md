@@ -157,6 +157,14 @@ safari network                 # since the last call; secrets removed
 safari source | safari ui | safari url | safari refresh
 ```
 
+- **An open `<select>` menu or picker refuses `tap` and `swipe`** ([#23](https://github.com/dividedby/mobile-safari-lab/issues/23)). While a
+  `<select>`, or an `<input>` of type `date`, `time`, `datetime-local`, `month`, `week` or `color`, has the focus, iOS shows
+  its native menu or picker over the page, and a touch lands on that, not on the page. So `tap` (also `--label`) and `swipe`
+  check the page's focused element first (following open shadow roots) and refuse with "has the focus, so its native menu
+  or picker is probably open", naming the element by tag, type and `id` or `name`; nothing is sent. Run `safari refresh` to
+  close it (the page reloads, so its state is lost). `click` is a script click and isn't checked. The check reads the page only, so a menu whose
+  element a script has already blurred isn't caught. `safari open` to an address that differs only by its `#fragment` doesn't
+  load a new page, so it doesn't close a menu either.
 - **`safari appearance` and `safari orientation` change the owner's phone** (iPhone only; through `devicectl`, so no
   page or tab is involved, and a simulator session is refused: use `sim appearance` there). The lab writes the old value
   down first (the restore ledger, [ADR 0007](docs/adr/0007-phone-settings-restore-ledger.md)) and puts it back at `safari stop`, `lab down`, the idle stop and, after a crash, the next

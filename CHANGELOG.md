@@ -5,6 +5,10 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+### Fixed
+
+- `safari tap` made while a `<select>`'s menu or a date picker was open landed on the menu, not the page, and still reported `ok: true`, so the agent read a page that never got the tap or picked an option by accident ([#23](https://github.com/dividedby/mobile-safari-lab/issues/23)). `tap` (also `--label`) and `swipe` now check the page first: while a `<select>`, or an `<input>` of type `date`, `time`, `datetime-local`, `month`, `week` or `color`, has the focus (in an open shadow root too), they refuse with "has the focus, so its native menu or picker is probably open", name the element by tag, type and `id` or `name`, and send nothing. `safari refresh` closes it. The check reads the page only, not Safari's native UI, so a menu whose element a script has already blurred isn't caught. `click` is a script click and isn't checked. AGENTS.md also says that an `open` to a `#fragment` change on the same page doesn't close a menu.
+
 ## [0.11.1] - 2026-11-11
 
 ### Fixed
