@@ -5,6 +5,8 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-12
+
 ### Added
 
 - `safari pinch in|out [--at <css>]` pinch-zooms the lab's tab with two touch fingers, on both targets ([#22](https://github.com/dividedby/mobile-safari-lab/issues/22)). The fingers sit on a horizontal line through the middle of the visible page, or of the element `--at` names, and move apart (out) or together (in) in one W3C action, released afterwards like `swipe`'s. Every point goes through the page-area and toolbar guard, with the tab-showing check right before; a centre too close to the page's edge, a bad direction or flag, an open `<select>` menu (#23) and a sheet over the page (#26) are refused before anything is sent. It reports `centre`, `fingers`, and the page's zoom as `scaleBefore` and `scaleAfter` (`visualViewport.scale`); a zoom that didn't change, from a page that blocks zooming, is a `warning`, not a failure. The zoom is left as it ends (`safari refresh` resets it). Not yet run on the phone or the simulator: stand-in tests only.
