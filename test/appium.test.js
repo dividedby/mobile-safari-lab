@@ -541,6 +541,7 @@ before(async () => {
           // Appium routes these to WebDriverAgent whatever the context
           if (s === "mobile: keys") typeKey(json.args[0].keys[0]);
           if (s === "mobile: source") {
+            fx.onSource?.();
             const out =
               fx.source !== undefined ? fx.source : sourceXml(json.args[0]);
             return fx.sourceDelayMs
@@ -4131,37 +4132,39 @@ test("the sheet refusal carries the sheet's rectangle, and nothing else from it 
   assert.deepEqual(e.extra.sheet, { x: 0, y: 0, width: 414, height: 524 });
 });
 
-// safari dismiss: the sheet goes when its close button is tapped or it is dragged down (the hooks take it off the screen).
+// safari dismiss: the stand-in sheet's bar is the dimmed area above its card, from the top of the screen to the card's top
+// edge at 524, as on the phone; the hooks take the sheet off the screen when the touch that closes it arrives.
 const sheetGone = () => {
   fx.chrome = ["C1", "C2"];
   fx.extraNodes = [];
 };
-const CLOSE = {
-  type: "XCUIElementTypeButton",
-  label: "Close",
-  x: 370,
-  y: 20,
-  width: 30,
-  height: 30,
-};
+const TAP_ABOVE = { x: 207, y: 286 }; // halfway between the page's top (48) and the card's top (524)
+const DRAG = { from: { x: 207, y: 536 }, to: { x: 207, y: 806 } }; // from just inside the card down to 90% of 896
 
-test("dismiss taps the sheet's one small Close button, then checks the sheet is gone (#26)", async () => {
+test("dismiss taps once above the sheet's card, reads no label, and checks the sheet is gone (#26)", async () => {
   await start();
   shareSheet();
-  fx.extraNodes.push(CLOSE);
+  fx.extraNodes.push({
+    type: "XCUIElementTypeButton",
+    label: "Close",
+    x: 370,
+    y: 540,
+    width: 30,
+    height: 30,
+  });
   fx.onNativeTap = (pt) => {
-    if (pt.x === 385 && pt.y === 35) sheetGone();
+    if (pt.x === TAP_ABOVE.x && pt.y === TAP_ABOVE.y) sheetGone();
   };
   const out = await safari.dismiss([]);
   assert.deepEqual(out, {
     dismissed: true,
-    via: "close",
+    via: "tap-outside",
     sheet: { x: 0, y: 0, width: 414, height: 524 },
   });
   assert.deepEqual(
     taps().map(([, , b]) => b.args[0]),
-    [{ x: 385, y: 35 }],
-  );
+    [TAP_ABOVE],
+  ); // not the Close button
   assert.equal(posts("/actions").length, 0);
   assert.ok(!JSON.stringify(out).includes("Jo Example"));
   assert.ok(
@@ -4172,69 +4175,86 @@ test("dismiss taps the sheet's one small Close button, then checks the sheet is 
   probesGone();
 });
 
-test("dismiss drags the sheet down when there is no single small Close button outside the page (#26)", async () => {
-  await start();
-  for (const extra of [
-    [], // none (another language, say)
-    [CLOSE, { ...CLOSE, x: 20 }], // two
-    [{ ...CLOSE, width: 80, height: 80 }], // a contact named Close: too big for a close button
-    [{ ...CLOSE, width: 50, height: 50 }], // still bigger than a close button
-    [{ ...CLOSE, y: 600 }], // outside the sheet's rectangle
-  ]) {
-    log.length = 0;
-    shareSheet();
-    fx.extraNodes.push(...extra);
-    fx.webView = [{ label: "Close", x: 300, y: 600, width: 30, height: 30 }]; // the page's own Close is never a candidate
-    fx.onActions = () => sheetGone();
-    const out = await safari.dismiss([]);
-    assert.equal(out.via, "swipe");
-    assert.equal(taps().length, 0);
-    const finger = posts("/actions")[0][2].actions[0].actions;
-    const [from, to] = [finger[0], finger[3]];
-    assert.deepEqual([from.x, from.y], [207, 60]); // just inside the sheet's top edge, below the page's top (48)
-    assert.ok(to.y > from.y && to.y < 896, JSON.stringify(to)); // down, short of the screen's bottom edge
-    fx.webView = undefined;
-  }
-});
-
-test("dismiss --dry-run reports the plan, geometry only, and sends nothing (#26)", async () => {
+test("dismiss drags the sheet down from its card when the tap above leaves it open (#26)", async () => {
   await start();
   shareSheet();
-  fx.extraNodes.push(CLOSE);
-  assert.deepEqual(await safari.dismiss(["--dry-run"]), {
-    dismissed: false,
-    dryRun: true,
-    via: "close",
-    at: { x: 385, y: 35 },
-    sheet: { x: 0, y: 0, width: 414, height: 524 },
-  });
-  fx.extraNodes.pop();
-  const drag = await safari.dismiss(["--dry-run"]);
+  fx.onActions = () => sheetGone();
+  const out = await safari.dismiss([]);
+  assert.equal(out.via, "swipe");
   assert.deepEqual(
-    [drag.via, drag.from, drag.to],
-    ["swipe", { x: 207, y: 60 }, { x: 207, y: 806 }],
+    taps().map(([, , b]) => b.args[0]),
+    [TAP_ABOVE],
   );
-  assert.equal(taps().length + posts("/actions").length, 0);
-  assert.ok(!JSON.stringify(drag).includes("Jo Example"));
+  const finger = posts("/actions")[0][2].actions[0].actions;
+  assert.deepEqual(
+    {
+      from: { x: finger[0].x, y: finger[0].y },
+      to: { x: finger[3].x, y: finger[3].y },
+    },
+    DRAG,
+  );
+  assert.ok(log.some(([m, u]) => m === "DELETE" && u.endsWith("/actions"))); // the finger is lifted
   probesGone();
 });
 
-test("dismiss fails with needs sheet when the sheet stays, and refuses when there is none (#26)", async () => {
+test("dismiss --dry-run reports the tap and the drag, geometry only, and sends no touch (#26)", async () => {
   await start();
   shareSheet();
-  fx.extraNodes.push(CLOSE);
+  assert.deepEqual(await safari.dismiss(["--dry-run"]), {
+    dismissed: false,
+    dryRun: true,
+    tap: TAP_ABOVE,
+    drag: DRAG,
+    sheet: { x: 0, y: 0, width: 414, height: 524 },
+  });
+  assert.equal(taps().length + posts("/actions").length, 0);
+  probesGone();
+});
+
+test("dismiss fails with needs sheet when the sheet stays, and sends nothing it can't place (#26)", async () => {
+  await start();
+  shareSheet();
   const e = await failing(safari.dismiss([]));
   assert.equal(e.extra.needs, "sheet");
-  assert.match(e.message, /still open after the lab tapped its close button/);
+  assert.match(
+    e.message,
+    /still open after the lab tapped above it and dragged it down/,
+  );
   assert.equal(e.extra.then, "safari dismiss");
-  sheetGone();
+  assert.equal(taps().length, 1);
+  assert.equal(posts("/actions").length, 1);
+  // A bar down to the screen's bottom has no card below it: nothing is sent.
   log.length = 0;
+  fx.rects.S1 = { x: 0, y: 0, width: 414, height: 896 };
+  await assert.rejects(
+    safari.dismiss([]),
+    /couldn't tell where the sheet's card is.*nothing was sent/,
+  );
+  assert.equal(taps().length + posts("/actions").length, 0);
+  sheetGone();
   await assert.rejects(
     safari.dismiss([]),
     /no system sheet is open over the lab's tab; nothing was done/,
   );
-  assert.equal(taps().length + posts("/actions").length, 0);
   await assert.rejects(safari.dismiss(["now"]), /usage: safari dismiss/);
+  assert.equal(taps().length + posts("/actions").length, 0);
+  probesGone();
+});
+
+test("dismiss counts a sheet that is gone by the drag's own read as closed by the tap, and drags nothing (#26)", async () => {
+  await start();
+  shareSheet();
+  let tapped = false,
+    reads = 0;
+  fx.onNativeTap = () => {
+    tapped = true;
+  };
+  fx.onSource = () => {
+    if (tapped && ++reads === 2) sheetGone(); // the look after the tap still sees it; the drag's read does not
+  };
+  const out = await safari.dismiss([]);
+  assert.equal(out.via, "tap-outside");
+  assert.equal(posts("/actions").length, 0);
   probesGone();
 });
 

@@ -34,7 +34,7 @@ const usage = {
     keys: "safari keys [--no-verify] [--] <text>  (key events into the focused field; \\b is Backspace)",
     swipe: "safari swipe up|down  (a touch drag across the page)",
     dismiss:
-      "safari dismiss [--dry-run]  (close a system sheet, such as Share, that the page opened over the lab's tab: taps its Close button or drags it down, then checks it is gone; --dry-run says how it would, geometry only, and sends no touch)",
+      "safari dismiss [--dry-run]  (close a system sheet, such as Share, that the page opened over the lab's tab: taps the dimmed area above it, then if it is still there drags it down, checking after each; --dry-run says how it would, geometry only, and sends no touch)",
     ui: "safari ui  (Safari's native accessibility tree)",
     source: "safari source  (the page source)",
     shot: "safari shot [name] [--page | --element <css> [--text <T> [--contains]] [--nth <N>] [--shadow]] [--scale <0-1> | --width <px>] [--]  (screenshot into the run folder; --page keeps the web content only, --element one element, --scale or --width shrinks it; the cut is made in memory and a cut that fails writes nothing)",
