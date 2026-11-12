@@ -7934,6 +7934,7 @@ test("a device tap or swipe with a <select> focused is refused before anything r
   const base = sent();
   page.activeCss = "#race";
   await assert.rejects(safari.tap(["#go"]), MENU_REFUSED);
+  await assert.rejects(safari.tap(["--label", "Senate"]), MENU_REFUSED);
   await assert.rejects(safari.swipe(["up"]), MENU_REFUSED);
   assert.equal(sent(), base);
   neverUnsafe();
