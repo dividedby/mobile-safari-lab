@@ -143,10 +143,14 @@ public (2026-10-31) are plain text ("issue 98"): they refer to the private archi
 
    The plist records the absolute path of `node`: `/opt/homebrew/bin/node` when that leads
    to the node running the install, otherwise the first stable `node` symlink on `PATH`
-   (never a versioned Cellar path, so a Homebrew patch upgrade keeps working). `lab service
+   (never a versioned Cellar path, so the path survives a Homebrew upgrade). `lab service
 status` shows the path it chose as `node`. **A node major upgrade, or moving node, may
    need `lab service install` again**; `lab service status` lists it under `issues` when the
-   recorded node no longer exists.
+   recorded node no longer exists. Any Homebrew upgrade of `node` can also make launchd refuse to start the
+   agents, since it keeps the code signature of the node it loaded them with
+   ([#39](https://github.com/dividedby/mobile-safari-lab/issues/39)). `lab up` then loads the tunnel host's agent again by
+   itself and says so; `lab service status` and `lab status` name any agent launchd still won't start, and
+   `lab service install` fixes them all.
 
    For a debugging session, `lab service install --log-level debug` makes Appium's log more
    detailed; the log-filter rules stay on, and `lab service status` shows the `logLevel`. At

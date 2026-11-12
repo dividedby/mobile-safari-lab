@@ -565,17 +565,20 @@ const IDLE_SPEC = {
 
 // A pretend launchd for the idle stop's label only; the Appium service is never loaded here.
 function idleWorld({ loaded = false, stuck = false } = {}) {
-  const w = { loaded };
+  const w = { loaded, refused: false };
   w.calls = fakeRunner((cmd, args) => {
     if (cmd === "xcode-select")
       return { stdout: "/Applications/Xcode.app/Contents/Developer\n" };
     if (cmd !== "launchctl") return undefined;
     if (args[0] === "print")
       return w.loaded
-        ? { stdout: `${IDLE_TARGET} = {\n\tstate = not running\n}\n` }
+        ? {
+            stdout: `${IDLE_TARGET} = {\n\tstate = not running\n${w.refused ? REFUSED_LINES : ""}}\n`,
+          }
         : { code: 113, stderr: "Could not find service" };
     if (args[0] === "bootout") {
       if (!stuck) w.loaded = false;
+      w.refused = false;
       return undefined;
     }
     if (args[0] === "bootstrap") {
@@ -810,6 +813,55 @@ test("idleStatus says whether the agent is installed and loaded, and flags a nod
   w.loaded = false;
   assert.ok(
     svc.idleStatus().issues.some((i) => /installed but not loaded/.test(i)),
+  );
+});
+
+// #39: what `launchctl print` showed for the tunnel host and the idle stop after a Homebrew upgrade replaced their node.
+const REFUSED_LINES =
+  "\tlast exit reason = OS_REASON_CODESIGNING\n\tjob state = spawn failed\n\tproperties = inferred program | needs LWCR update\n";
+
+test("launchdState reads launchd's last exit reason and job state; launchRefused is a refused spawn, not a job between runs (#39)", () => {
+  fakeRunner(() => ({
+    stdout: `x = {\n\tstate = not running\n${REFUSED_LINES}\t\tstate = active\n}\n`,
+  }));
+  const l = svc.launchdState("gui/501/x");
+  assert.deepEqual(l, {
+    loaded: true,
+    state: "not",
+    pid: null,
+    jobState: "spawn failed",
+    lastExitReason: "OS_REASON_CODESIGNING",
+  });
+  assert.equal(svc.launchRefused(l), true);
+  assert.equal(svc.launchRefused({ ...l, jobState: null }), true); // the code-signing reason alone
+  assert.equal(svc.launchRefused({ ...l, lastExitReason: null }), true); // a failed spawn alone
+  assert.equal(
+    svc.launchRefused({ ...l, jobState: null, lastExitReason: "SIGKILL" }),
+    false,
+  ); // stopped by lab down: fine
+  assert.equal(svc.launchRefused({ ...l, pid: 42 }), false); // running now
+  assert.equal(svc.launchRefused({ loaded: false }), false);
+});
+
+test("idleStatus flags an idle stop launchd won't start, says refused, and lab service install clears it (#39)", async () => {
+  const w = idleWorld();
+  const node = path.join(dir, "node");
+  fs.writeFileSync(node, "");
+  await svc.installIdle({ node, lab: labFile() });
+  w.loaded = true;
+  assert.equal(svc.idleStatus().refused, undefined);
+  w.refused = true;
+  const s = svc.idleStatus();
+  assert.equal(s.refused, true);
+  assert.equal(s.issues.length, 1);
+  assert.match(
+    s.issues[0],
+    /launchd won't start the idle stop \(spawn failed: OS_REASON_CODESIGNING\); this happens when the node it runs was replaced, as a Homebrew upgrade does: run `lab service install` again/,
+  );
+  await svc.installIdle({ node, lab: labFile() }); // boots it out and loads it again
+  assert.deepEqual(
+    [svc.idleStatus().refused, svc.idleStatus().issues],
+    [undefined, []],
   );
 });
 
