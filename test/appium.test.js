@@ -30,7 +30,7 @@ import {
 import { OFF_WARNING } from "../lib/signlock.js";
 import { cli, loadState, saveState, newRun, REPO } from "../lib/core.js";
 import * as tunnelLib from "../lib/tunnel.js";
-import { InterruptError, withInterrupt } from "../lib/interrupt.js";
+import { InterruptError, withInterrupt, hasActed } from "../lib/interrupt.js";
 import * as phoneLib from "../lib/phone.js";
 import {
   SERVICE,
@@ -55,6 +55,7 @@ import {
   ELEMENT,
   sheetOver,
   sheetPlan,
+  pinchFingers,
 } from "../lib/safari.js";
 import { decodePng } from "../lib/png.js";
 import {
@@ -371,6 +372,7 @@ const fresh = () => ({
   tapFocus: null, // what a tap reports about the field: null (not a text field), true or false
   menuEl: null, // the page's active element for the open-menu check before a tap or swipe (#23)
   selectEls: [], // the elements `safari select` resolves (#24): see fakeSelect
+  scale: undefined, // the page's visualViewport.scale as `safari pinch` reads it (#22); undefined reads as 1
   selectActive: null, // the page's active element while `safari select` runs
   geometryFor: null, // (n) => geometry: the nth measurement of the tapped element, when it moves
   measures: 0,
@@ -640,6 +642,8 @@ before(async () => {
               json.args,
             ),
           );
+        if (s.includes("visualViewport.scale > 0"))
+          return send(fx.scale === undefined ? 1 : fx.scale); // safari pinch reads the zoom before and after (#22)
         if (s.includes("const pickers = ["))
           // is a native menu open: the real script, against a document whose active element is fx.menuEl
           return send(
@@ -4011,6 +4015,113 @@ test("swipe on a zoomed page starts and ends inside the visible area", async () 
   probesGone();
 });
 
+// #22: two fingers on one horizontal line through the centre, apart (out) or together (in).
+const fingers = (body) =>
+  body.actions.map((p) => ({
+    id: p.id,
+    type: p.parameters.pointerType,
+    from: { x: p.actions[0].x, y: p.actions[0].y },
+    to: { x: p.actions[3].x, y: p.actions[3].y },
+  }));
+
+test("pinch out moves two touch fingers apart around the page's centre, releases them, and reports the zoom before and after (#22)", async () => {
+  await start();
+  fx.onActions = () => {
+    fx.scale = 2;
+  };
+  const out = await safari.pinch(["out"]);
+  // page area (0, 48, 414, 750): centre (207, 423); 30 pt either side, out to 35% of the width (144.9 pt)
+  assert.deepEqual(out, {
+    pinched: "out",
+    centre: { x: 207, y: 423 },
+    fingers: [
+      { from: { x: 177, y: 423 }, to: { x: 62.1, y: 423 } },
+      { from: { x: 237, y: 423 }, to: { x: 351.9, y: 423 } },
+    ],
+    scaleBefore: 1,
+    scaleAfter: 2,
+  });
+  const body = posts("/actions")[0][2];
+  assert.deepEqual(fingers(body), [
+    { id: "finger1", type: "touch", ...out.fingers[0] },
+    { id: "finger2", type: "touch", ...out.fingers[1] },
+  ]);
+  assert.ok(log.some(([m, u]) => m === "DELETE" && u.endsWith("/actions")));
+  probesGone();
+});
+
+test("pinch in moves the fingers together; --at centres on an element; an unchanged zoom is said, not failed (#22)", async () => {
+  await start();
+  fx.geometry = { ...fx.geometry, cx: 100, cy: 300 };
+  const out = await safari.pinch(["in", "--at", "#map"]);
+  assert.equal(out.at, "#map");
+  assert.deepEqual(out.centre, { x: 100, y: 348 }); // client (100, 300) on the probe at (0, 48)
+  const [left, right] = out.fingers;
+  assert.ok(
+    left.from.x < left.to.x && right.from.x > right.to.x,
+    JSON.stringify(out.fingers),
+  ); // together
+  assert.ok(left.from.x >= 8, "room is kept from the page's edge");
+  assert.equal(out.scaleBefore, 1);
+  assert.equal(out.scaleAfter, 1);
+  assert.match(
+    out.warning,
+    /the page's zoom didn't change.*user-scalable=no.*touch-action/,
+  );
+  probesGone();
+});
+
+test("pinchFingers keeps both fingers inside a narrow or zoomed page area, or refuses (#22)", () => {
+  const narrow = { x: 0, y: 48, width: 240, height: 300 };
+  const [l, r] = pinchFingers("out", { x: 120, y: 200 }, narrow);
+  for (const f of [l, r])
+    for (const p of [f.from, f.to])
+      assert.ok(
+        p.x >= narrow.x + 8 && p.x <= narrow.x + narrow.width - 8,
+        JSON.stringify(p),
+      );
+  assert.deepEqual([l.to.x, r.to.x], [36, 204]); // 35% of 240 is 84
+  assert.throws(
+    () => pinchFingers("out", { x: 80, y: 200 }, { ...narrow, width: 160 }),
+    /too close/,
+  ); // 56 pt is too little to pinch
+  assert.throws(
+    () =>
+      pinchFingers(
+        "in",
+        { x: 50, y: 200 },
+        { x: 0, y: 0, width: 100, height: 100 },
+      ),
+    /too close to the page's edge/,
+  );
+});
+
+test("pinch refuses before anything is sent: a bad direction or flag, a finger on Safari's toolbar, no room at the edge (#22)", async () => {
+  await start();
+  for (const args of [
+    [],
+    ["sideways"],
+    ["out", "--at"],
+    ["out", "--near", "x"],
+    ["in", "--at", "a", "b"],
+  ])
+    await assert.rejects(
+      safari.pinch(args),
+      /usage: safari pinch in\|out \[--at <css>\]/,
+      args.join(" "),
+    );
+  fx.rects.C1 = { x: 0, y: 400, width: 414, height: 50 }; // a bar across the centre line
+  await assert.rejects(safari.pinch(["out"]), /on Safari's toolbar/);
+  fx.rects.C1 = { x: 0, y: 750, width: 400, height: 50 };
+  fx.geometry = { ...fx.geometry, cx: 20, cy: 300 }; // 20 pt from the left edge
+  await assert.rejects(
+    safari.pinch(["out", "--at", "#edge"]),
+    /too close to the page's edge to pinch around/,
+  );
+  assert.equal(posts("/actions").length, 0);
+  probesGone();
+});
+
 test("swipe drags across the calibrated page area and releases the pointer", async () => {
   await start();
   const up = await safari.swipe(["up"]);
@@ -5494,6 +5605,7 @@ const PAGE_COMMANDS = {
   tap: ["a"],
   keys: ["x"],
   swipe: ["up"],
+  pinch: ["out"],
   dismiss: [],
   ui: [],
   source: [],
@@ -8761,6 +8873,35 @@ test("a device tap --label is not sent when the tab is not showing, or leaves af
     "tab",
   );
   assert.equal(tapsSent(), 0);
+  neverUnsafe();
+});
+
+test("a device pinch checks the tab is showing right before the fingers go down, and --at must match (#22)", async () => {
+  await startPhone();
+  const out = await withInterrupt(async () => {
+    const r = await safari.pinch(["out"]);
+    assert.equal(
+      hasActed(),
+      true,
+      "a pinch counts as acting on the page, for an interrupt's words",
+    );
+    return r;
+  });
+  assert.equal(out.pinched, "out");
+  const at = lastIndex(([m, u]) => m === "POST" && u.endsWith("/actions"));
+  assert.ok(at > 0);
+  visibilityRightBefore(at);
+  const sent = dlog.filter(
+    ([m, u]) => m === "POST" && u.endsWith("/actions"),
+  ).length;
+  await assert.rejects(
+    safari.pinch(["in", "--at", "#nothing"]),
+    /no element matches #nothing/,
+  );
+  assert.equal(
+    dlog.filter(([m, u]) => m === "POST" && u.endsWith("/actions")).length,
+    sent,
+  );
   neverUnsafe();
 });
 
