@@ -4066,7 +4066,7 @@ test("pinch in moves the fingers together; --at centres on an element; an unchan
   assert.equal(out.scaleAfter, 1);
   assert.match(
     out.warning,
-    /the page's zoom didn't change.*user-scalable=no.*touch-action/,
+    /the page's zoom didn't change.*limit.*user-scalable=no/,
   );
   probesGone();
 });

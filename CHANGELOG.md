@@ -5,6 +5,10 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+### Changed
+
+- `safari pinch` was checked on the phone (iOS 27.2, [#22](https://github.com/dividedby/mobile-safari-lab/issues/22)): it zooms out and in, and a tap on a link at 3.4× zoom lands. Two claims made for 0.12.0 were wrong there. `safari refresh` keeps the zoom rather than resetting it, so use `safari pinch in` to get back to 1. Safari also zoomed even with `user-scalable=no` and `touch-action` set by script (a page declaring them in its HTML wasn't tried), so the unchanged-zoom `warning` no longer names them; it names Safari's 5× limit, or touches Safari didn't take as a pinch.
+
 ## [0.12.0] - 2026-11-12
 
 ### Added
