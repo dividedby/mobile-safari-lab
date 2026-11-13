@@ -9,7 +9,8 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ### Changed
 
-- `safari pinch` was checked on the phone (iOS 27.2, [#22](https://github.com/dividedby/mobile-safari-lab/issues/22)): it zooms out and in, and a tap on a link at 3.4× zoom lands. Two claims made for 0.12.0 were wrong there. `safari refresh` keeps the zoom rather than resetting it, so use `safari pinch in` to get back to 1. Safari also zoomed even with `user-scalable=no` and `touch-action` set by script (a page declaring them in its HTML wasn't tried), so the unchanged-zoom `warning` no longer names them; it names Safari's 5× limit, or touches Safari didn't take as a pinch. `pinch --at <css>` was checked on the phone too: the element stayed under the pinch point at 3.4×, and one below the fold was refused until scrolled into view.
+- `safari pinch` was checked on the phone (iOS 27.2, [#22](https://github.com/dividedby/mobile-safari-lab/issues/22)): it zooms out and in, and a tap on a link at 3.4× zoom lands. Two claims made for 0.12.0 were wrong there. `safari refresh` keeps the zoom rather than resetting it, so use `safari pinch in` to get back to 1. Safari also zoomed even with `user-scalable=no` and `touch-action` set by script (a page declaring them in its HTML wasn't tried), so the unchanged-zoom `warning` no longer names them; it names Safari's 5× limit, or touches Safari didn't take as a pinch.
+- `safari pinch --at <css>` was checked on the phone too ([#22](https://github.com/dividedby/mobile-safari-lab/issues/22)): the element stayed under the pinch point at 3.3× and 3.448×, and one below the fold was refused until scrolled into view. Nothing in this release has run on the simulator.
 
 ## [0.12.0] - 2026-11-12
 
