@@ -41,7 +41,7 @@ and I'll try to get to them.
    - On the phone the lab opens, checks and closes its own tab only, and reads no other.
    - Tests never touch a real simulator, phone or Appium: `setRunner` records commands, and stand-in servers play
      Appium and WebDriverAgent. Build fake device IDs and secrets in the test, never real ones.
-4. Update `README.md`, `CHANGELOG.md` (under `## [Unreleased]`) and, when usage changes, `AGENTS.md` and
+4. Update `README.md`, `CHANGELOG.md` (under `## [Unreleased]`) and, when usage changes, `AGENTS.md` (and the detail files in `docs/agents-guide/`) and
    `skill/SKILL.md` in the same pull request.
 5. Run `pnpm test` and `pnpm check-secrets` and make sure it passes before you open the pull request. Say what you ran on a real Mac, simulator
    or iPhone, and what you didn't. CI must be green; pull requests are merged with a merge commit.

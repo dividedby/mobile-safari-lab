@@ -7,6 +7,9 @@ pages and userscripts: `bin/sim` (simctl + AXe) for the phone, `bin/safari` (App
 `safaridriver`, W3C WebDriver over `fetch`) for the page. Node 22+, ES modules, no
 dependencies, no build step. Terms are in `CONTEXT.md`; the design is `docs/adr/0001`.
 How projects use it is `skill/SKILL.md` (linked into `~/.claude/skills/mobile-safari`).
+`AGENTS.md` is the manual for agents in other repos (rules, workflow, `needs` table, reporting), a
+short entry point over `docs/agents-guide/`; read it when you change lab behaviour or those docs, not
+every session. Contributors follow it too ([CONTRIBUTING.md](CONTRIBUTING.md)).
 
 `pnpm test` (`node --test`) runs everywhere: `setRunner` records commands instead of running
 them, and a stand-in HTTP server plays safaridriver. Real runs need macOS with Xcode;
@@ -24,17 +27,12 @@ cloud sessions can't run `xcrun`, so say what was and wasn't run on the Mac.
 - No secrets, device or team IDs, or run folders in the repo: the pre-commit hook (`pnpm install` turns it on) runs
   `scripts/check-secrets.mjs`; never `--no-verify`. Tests build fake IDs at runtime or use the fixed fake UDIDs.
 - Public identity is `dividedby` only. Commit as `dividedby <64715420+dividedby@users.noreply.github.com>`.
-- User-facing changes update `CHANGELOG.md`, the README and, when usage changes, the skill.
+- User-facing changes update `CHANGELOG.md`, the README and, when usage changes, `AGENTS.md` (or the file in `docs/agents-guide/` that holds the detail) and the skill.
 
-## Agent skills
+## Checks
 
-Issues: GitHub issues in `dividedby/mobile-safari-lab` (via `gh api` REST routes). A loose idea goes to the top of the
-[Idea Inbox](https://github.com/dividedby/mobile-safari-lab/issues/6), not scoped yet; to capture or drain one, see
-`docs/agents/idea-inbox.md`.
+`pnpm test` (also run in CI), `pnpm check-secrets`, `pnpm format:check` (`pnpm format` fixes; files also format on edit).
 
-## Code style
+## Issues and ideas
 
-Formatting uses each tool's standard defaults, the same across all `dividedby` repos. Don't add style options or format by hand. Files format on edit through the post-edit hook. CI checks it in `.github/workflows/format.yml`.
-
-- **JS, TS, HTML, CSS, JSON, Markdown, YAML:** Prettier defaults. Run `pnpm format`, or `pnpm format:check` to check.
-- **Shell:** `shfmt` with 2-space indentation, per Google's Shell Style Guide. Set in `.editorconfig`.
+Issues: GitHub issues in `dividedby/mobile-safari-lab`. Ideas: Idea Inbox is issue #6 (label `idea-inbox`); protocol in `docs/agents/idea-inbox.md`.

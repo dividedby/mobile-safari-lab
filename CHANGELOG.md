@@ -5,6 +5,10 @@ repo went public (2026-10-31) are plain text ("issue 98"): they refer to the pri
 
 ## [Unreleased]
 
+### Changed
+
+- `AGENTS.md` is now a short entry point (rules, a where-things-live table, one short section per step). The detail moved, unchanged apart from cross-references, into `docs/agents-guide/`: `setup.md`, `targets.md`, `wifi.md` ("Using Wi-Fi"), `bring-up.md`, `test.md`, `test-gotchas.md`, `finish.md`, `needs.md` (the `needs` table), `hard-rules.md`, `privacy.md` and `reporting.md`. The skill and the README point at the new files. `CLAUDE.md` links `AGENTS.md`, lists the checks and drops the rules that only restated global ones.
+
 ## [0.12.1] - 2026-11-12
 
 ### Changed
