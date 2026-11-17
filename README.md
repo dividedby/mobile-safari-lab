@@ -808,7 +808,7 @@ usually means this), `cable` (the Mac can't reach the phone: unplugged, or not s
 within 45 s, it dropped, it reached another device, the pymobiledevice3 version check timed out twice, or the phone step can't reach a phone last reached over Wi-Fi, such as one that stayed out of the device list for 30 s; see "Using Wi-Fi"), `resign` (signing expired or
 rejected), `slots` (free-account app limit), `busy` (sideload is signing; try again in a minute), `tab` (the lab's tab can't be confirmed;
 `safari start` for a fresh one), `sheet` (a system sheet such as Share covers the page: `safari dismiss`, or the owner closes it, then the same command again), `service` (`lab service install`), and `unknown` (run
-`lab phone status`). The full table, with the exact steps, is in [AGENTS.md](AGENTS.md).
+`lab phone status`). The full table, with the exact steps, is in [docs/agents-guide/needs.md](docs/agents-guide/needs.md).
 
 **Finishing.** `lab down` on the phone ends the session and closes the lab's tab, stops
 the WebDriverAgent it left running (step `wda`) and stops Appium like on the
@@ -1240,7 +1240,7 @@ UDID, team or bundle id, a simulator's UDID), this Mac's home folder, or a run f
 every file, as CI does. `pnpm test` (or `node --test`) runs the tests on any OS: commands are recorded instead of
 run, and a stand-in WebDriver server plays Appium; the iPhone's `devicectl` answers are recorded fixtures. Code style and conventions:
 [CLAUDE.md](CLAUDE.md). Agents in other repos report what they find in the lab (bugs, missing
-features, friction, wrong docs) as described in [AGENTS.md](AGENTS.md#9-report-what-you-find-bugs-features-docs).
+features, friction, wrong docs) as described in [docs/agents-guide/reporting.md](docs/agents-guide/reporting.md).
 To report a problem or send a change, see [CONTRIBUTING.md](CONTRIBUTING.md) (with guidance for AI agents).
 
 ## License and trademarks
