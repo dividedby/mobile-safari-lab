@@ -5,7 +5,7 @@
 `mobile-safari-lab` drives real Mobile Safari in the Xcode iOS Simulator for testing web
 pages and userscripts: `bin/sim` (simctl + AXe) for the phone, `bin/safari` (Apple's
 `safaridriver`, W3C WebDriver over `fetch`) for the page. Node 22+, ES modules, no
-dependencies, no build step. Terms are in `CONTEXT.md`; the design is `docs/adr/0001`.
+dependencies, no build step. Terms are in `GLOSSARY.md`; the design is `docs/adr/0001`.
 How projects use it is `skill/SKILL.md` (linked into `~/.claude/skills/mobile-safari`).
 `AGENTS.md` is the manual for agents in other repos (rules, workflow, `needs` table, reporting), a
 short entry point over `docs/agents-guide/`; read it when you change lab behaviour or those docs, not

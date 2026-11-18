@@ -4,7 +4,7 @@ For any coding agent, in any repo, that wants to test a web page or userscript i
 Safari with this lab. It drives the owner's **iPhone** or an iOS **Simulator** on the Mac, and
 prints one JSON object per command (`ok` true or false). This file is the entry point: the rules
 and the workflow in short, with the detail in [docs/agents-guide/](docs/agents-guide/). The
-[README](README.md) has setup, [CONTEXT.md](CONTEXT.md) the terms, and
+[README](README.md) has setup, [GLOSSARY.md](GLOSSARY.md) the terms, and
 [skill/SKILL.md](skill/SKILL.md) the same workflow written as a Claude Code skill.
 
 These docs are the source of truth for the lab: they override lab details you remember or that

@@ -31,7 +31,7 @@ When asked to drain the Inbox, or one item in it, take the item as far as it nee
    sequence of investigation issues ("Investigate X to determine Y"), each settling a decision the next depends on, and
    move the item to `✅ Actioned` with `→ #<first> #<second> …` for all of them. Skip this when the idea is already one
    decision with a clear next step.
-3. **Do only the steps it needs.** Talk it through with the owner when it's fuzzy or touches the terms in `CONTEXT.md`
+3. **Do only the steps it needs.** Talk it through with the owner when it's fuzzy or touches the terms in `GLOSSARY.md`
    or an ADR. Write a spec first only when it's big enough to need one. A small, clear idea may need only one issue.
 4. **Labels.** Use the repo's: `bug`, `enhancement` or `documentation`.
 5. **Write a brief an agent can finish.** Name the files or area, what done looks like, what's out of scope, and how to

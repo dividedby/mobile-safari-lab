@@ -7,7 +7,7 @@ and I'll try to get to them.
 ## Before you start
 
 - Read `README.md` (setup and every command) and `AGENTS.md` (the workflow and the hard rules; they apply to people as
-  much as to agents). `CONTEXT.md` has the terms, and `docs/adr/` the design decisions.
+  much as to agents). `GLOSSARY.md` has the terms, and `docs/adr/` the design decisions.
 - Requirements: macOS with Xcode for real runs (an Apple Silicon Mac on macOS 27 and Xcode 27 is what it is checked
   on), Node 22 or newer, and pnpm (never npm or yarn). The tests run anywhere Node does.
 - The phone you test with is yours to set up: `lab phone setup` saves its UDID, your team and a bundle id in the
