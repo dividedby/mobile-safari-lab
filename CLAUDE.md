@@ -31,7 +31,7 @@ cloud sessions can't run `xcrun`, so say what was and wasn't run on the Mac.
 
 ## Checks
 
-`pnpm test` (also run in CI), `pnpm check-secrets`, `pnpm format:check` (`pnpm format` fixes; files also format on edit).
+`pnpm test` (also run in CI), `pnpm check-secrets`, `pnpm format:check` (`pnpm format` fixes; files also format on edit). Lint: no linter; `pnpm check-secrets` and `pnpm format:check` are the static checks.
 
 ## Issues and ideas
 
