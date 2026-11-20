@@ -1901,7 +1901,7 @@ test("requireRedactedService refuses a plist without the page pin, or a home wit
   const filters = svc.logFiltersPath();
   fs.mkdirSync(path.dirname(filters), { recursive: true });
   fs.writeFileSync(filters, CURRENT_RULES);
-  fakeRunner((cmd, args) =>
+  fakeRunner((cmd) =>
     cmd === "launchctl"
       ? { stdout: "state = running\n\tpid = 4242\n" }
       : cmd === "lsof"
@@ -1984,7 +1984,7 @@ test("requireCurrentRules also asks the process: a service older than its rules 
   svc.requireCurrentRules();
   // ... and the stricter door too
   world(4242, "10:00\n");
-  fakeRunner((cmd, args) =>
+  fakeRunner((cmd) =>
     cmd === "launchctl"
       ? { stdout: "state = running\n\tpid = 4242\n" }
       : cmd === "lsof"
@@ -2077,7 +2077,7 @@ test("install writes the rules only once the old service is gone: a bootout that
 
 test("requireServiceForValues refuses a plist that does not show redaction, even with a current rules file", () => {
   const filters = rulesFile(Math.floor(Date.now() / 1000) - 50);
-  fakeRunner((cmd, args) =>
+  fakeRunner((cmd) =>
     cmd === "launchctl"
       ? { stdout: "state = running\n\tpid = 4242\n" }
       : cmd === "lsof"

@@ -1,0 +1,7 @@
+{
+  "rules": {
+    // `then` is a public field of the lab's JSON output (the follow-up command of a `needs` entry, see
+    // AGENTS.md); renaming it changes the agent-facing contract. None of these objects is awaited.
+    "unicorn/no-thenable": "off"
+  }
+}
