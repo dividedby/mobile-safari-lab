@@ -68,7 +68,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FAKE = path.join(HERE, "fixtures", "fake-sideload");
 const FIX = path.join(HERE, "fixtures", "phone");
 
-let dir, bin, home, fakeDir, calls, w, saved;
+let bin, home, fakeDir, calls, w, saved;
 
 // A wrapper script that runs the fake sideload under node (a real executable file: the lab checks for one).
 function makeBin(into) {
@@ -82,7 +82,7 @@ function makeBin(into) {
 }
 
 beforeEach(() => {
-  dir = sandbox();
+  sandbox();
   saved = { ...SLOT_WAIT };
   delete process.env.MSL_SIDELOAD_BIN;
   process.env.MSL_OWNER = "me";

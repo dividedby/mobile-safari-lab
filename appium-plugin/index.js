@@ -203,7 +203,7 @@ export class PagePinPlugin {
   }
 
   async execute(next, driver, script) {
-    if (driver?.[STATE] && !/^mobile:/.test(String(script).trim()))
+    if (driver?.[STATE] && !String(script).trim().startsWith("mobile:"))
       ensureArmed(driver);
     return next();
   }

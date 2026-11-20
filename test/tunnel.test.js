@@ -776,7 +776,7 @@ test("host: a second SIGTERM during the teardown does not end it; the key, the r
   await waitFor(
     () =>
       signals.listenerCount("SIGTERM") > 0 &&
-      w.lines.some((l) => /^up:/.test(l)) &&
+      w.lines.some((l) => l.startsWith("up:")) &&
       tunnel.readTunnel().state === "up",
   );
   await new Promise((r) => setTimeout(r, 100)); // the teardown is now waiting for WebDriverAgent

@@ -330,7 +330,7 @@ async function bootWaits(outs) {
         ? { code: 124, stdout: "", stderr: "timed out after 150s" }
         : { code: 0, stdout: "", stderr: "" };
     }
-    return { code: 0, stdout: "", stderr: "", ...(said || {}) };
+    return { code: 0, stdout: "", stderr: "", ...said };
   });
   try {
     const out = await lab.up([]);

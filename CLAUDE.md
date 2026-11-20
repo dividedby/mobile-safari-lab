@@ -31,7 +31,7 @@ cloud sessions can't run `xcrun`, so say what was and wasn't run on the Mac.
 
 ## Checks
 
-`pnpm test` (also run in CI), `pnpm check-secrets`, `pnpm format:check` (`pnpm format` fixes; files also format on edit). Lint: no linter; `pnpm check-secrets` and `pnpm format:check` are the static checks.
+`pnpm test` (also run in CI), `pnpm lint` (oxlint, default rules, `--deny-warnings`; CI job `lint`), `pnpm check-secrets`, `pnpm format:check` (`pnpm format` fixes; files also format on edit). CI also runs a gitleaks `secret-scan` over the commits in a change, next to `pnpm check-secrets` (the repo's own IDs, paths and run folders). `.oxlintrc.json` turns off `unicorn/no-thenable` because `then` is a field of the lab's JSON output.
 
 ## Issues and ideas
 

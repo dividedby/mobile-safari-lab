@@ -40,7 +40,7 @@ test("MSL_PMD3 names the tool, and must be absolute", () => {
 });
 
 test("the tool is found in the folder uv installs commands into, by an argument list", () => {
-  const calls = fakeRunner((cmd, args) =>
+  const calls = fakeRunner((cmd) =>
     cmd === "uv" ? { stdout: "/Users/x/.local/bin\n" } : undefined,
   );
   assert.equal(pmd3Path(), "/Users/x/.local/bin/pymobiledevice3");

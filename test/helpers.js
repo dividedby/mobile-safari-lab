@@ -87,7 +87,7 @@ export function fakeRunner(reply = () => undefined) {
     // A service that started just now: the rules it was given are the ones on disk (see rulesLoadedBy).
     if (!said && cmd === "ps" && args.includes("etime="))
       return { code: 0, stdout: "00:00\n", stderr: "" };
-    return { code: 0, stdout: "", stderr: "", ...(said || {}) };
+    return { code: 0, stdout: "", stderr: "", ...said };
   });
   return calls;
 }
@@ -392,14 +392,13 @@ function runPage(dv, page, script, args) {
     });
     return page.lastEl;
   };
-  const textEl = (css, i, text, map) => {
+  const textEl = (css, i, text) => {
     const e = el(`${css}[${i}]`);
     e.innerText = text;
     const root = page.roots?.[css];
     if (root)
       e.shadowRoot = {
-        querySelectorAll: (c) =>
-          (root[c] ?? []).map((t, j) => textEl(c, j, t, root)),
+        querySelectorAll: (c) => (root[c] ?? []).map((t, j) => textEl(c, j, t)),
       };
     return e;
   };
@@ -483,7 +482,7 @@ function runPage(dv, page, script, args) {
               throw new SyntaxError("not a valid selector");
             })()
           : page.texts?.[css]
-            ? page.texts[css].map((text, i) => textEl(css, i, text, page.texts))
+            ? page.texts[css].map((text, i) => textEl(css, i, text))
             : Array.from({ length: page.els[css] ?? 0 }, (_, i) =>
                 el(i ? `${css}[${i}]` : css),
               ),
@@ -710,7 +709,7 @@ export function standin({ phone = false } = {}) {
           return void setTimeout(apply, fx.keyboardDelayMs);
         return apply();
       }
-      if (fx.phone) return phoneRequest(req, p, json, send, fail);
+      if (fx.phone) return phoneRequest(req, p, json, send);
       if (p === "/context" && req.method === "GET") return send(ctx.get(id));
       if (p === "/context") {
         ctx.set(id, json.name);
@@ -731,7 +730,7 @@ export function standin({ phone = false } = {}) {
     });
   });
   // The phone's Safari behind the session: everything after the generic session routes.
-  function phoneRequest(req, p, json, send, fail, resumed = false, at = null) {
+  function phoneRequest(req, p, json, send, resumed = false, at = null) {
     const failure = (error, message = error, status = 404) =>
       send({ error, message }, status);
     const park = () => dv.onPark?.(); // every way a request goes unanswered (queued, held, or answered late) passes here
@@ -739,7 +738,7 @@ export function standin({ phone = false } = {}) {
     // not showing, every later request waits behind it. They are all answered, in order, by switchBack().
     if (dv.queue) {
       park();
-      dv.queue.push(() => phoneRequest(req, p, json, send, fail));
+      dv.queue.push(() => phoneRequest(req, p, json, send));
       return undefined;
     }
     if (p === "/contexts") {
@@ -772,7 +771,7 @@ export function standin({ phone = false } = {}) {
       if (dv.hangOnSelect && json.name !== "NATIVE_APP" && !resumed) {
         dv.hangOnSelect = false;
         park();
-        dv.queue = [() => phoneRequest(req, p, json, send, fail, true)];
+        dv.queue = [() => phoneRequest(req, p, json, send, true)];
         return undefined;
       }
       dv.context = json.name;
@@ -830,9 +829,7 @@ export function standin({ phone = false } = {}) {
       if (!page) return failure("no such window", "window gone");
       if (dv.hang === "queue" && page.id === PAGE && !resumed) {
         park();
-        dv.queue = [
-          () => phoneRequest(req, p, json, send, fail, true, page.id),
-        ];
+        dv.queue = [() => phoneRequest(req, p, json, send, true, page.id)];
         return undefined;
       }
       page.runs++;
@@ -938,7 +935,7 @@ export function neverUnsafe(ps) {
     "DELETE /window",
   );
   assert.deepEqual(
-    log.filter(([m, u]) => m === "POST" && /\/url$/.test(u)),
+    log.filter(([m, u]) => m === "POST" && u.endsWith("/url")),
     [],
     "POST /url",
   );
@@ -1114,7 +1111,7 @@ export function displayPhone(init = {}) {
       const name = url.searchParams.get("name");
       ph.shortcuts.push(name);
       ph.onSet?.("focus", name);
-      if (!ph.locked) ph.focus = /On$/.test(name) ? "on" : "off";
+      if (!ph.locked) ph.focus = name.endsWith("On") ? "on" : "off";
       return { code: 0, stdout: "", stderr: "" };
     }
     if (

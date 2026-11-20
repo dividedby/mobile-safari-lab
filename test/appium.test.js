@@ -113,7 +113,7 @@ function runProbeScript(script, args) {
     `return (function () {${script}}).apply(null, args);`,
   )(window, document, args);
   fx.probeCss = style.cssText;
-  const { scale, ...kept } = out;
+  const { scale: _scale, ...kept } = out;
   return kept;
 }
 
@@ -1837,12 +1837,12 @@ test("console and network add truncated and a note only when the buffer filled",
   assert.equal(c.copies, 3);
   assert.match(
     c.note,
-    /^Appium's 5000-entry buffer filled, so earlier entries may have been lost\. Read \`safari console\` more often, or restart the session \(\`safari stop\` then \`safari start\`\)\.$/,
+    /^Appium's 5000-entry buffer filled, so earlier entries may have been lost\. Read `safari console` more often, or restart the session \(`safari stop` then `safari start`\)\.$/,
   );
   const n = await safari.network();
   assert.equal(n.truncated, true);
   assert.equal(n.copies, 3);
-  assert.match(n.note, /\`safari network\` more often/);
+  assert.match(n.note, /`safari network` more often/);
   assert.equal(n.count, 1700);
 });
 
@@ -10903,7 +10903,7 @@ test("wait times out at the limit with ok:false counts and the reason, no needs,
   assert.equal(out.needs, undefined);
   assert.ok(
     fs.existsSync(out.artifacts.screenshot) &&
-      /fail\.png$/.test(out.artifacts.screenshot),
+      out.artifacts.screenshot.endsWith("fail.png"),
   );
   assert.ok(fs.existsSync(out.artifacts.source));
 });
@@ -12697,7 +12697,7 @@ test("open --storage on the simulator: a failure after the write keeps no fail.p
     return JSON.parse(printed[0]);
   };
   const failFiles = () =>
-    fs.readdirSync(loadState().run).filter((f) => /^fail/.test(f));
+    fs.readdirSync(loadState().run).filter((f) => f.startsWith("fail"));
   fx.waitSeq = [{}];
   const after = await run([
     "http://127.0.0.1:3000/x",
@@ -12726,7 +12726,7 @@ test("open --storage on the simulator: a failure after the write keeps no fail.p
   assert.match(before.error, /the root redirected to http:\/\/b\.test/);
   assert.ok(
     fs.existsSync(before.artifacts.screenshot) &&
-      /fail\.png$/.test(before.artifacts.screenshot),
+      before.artifacts.screenshot.endsWith("fail.png"),
   );
   assert.deepEqual(failFiles().sort(), ["fail.html", "fail.png"]);
   noCanary("simulator failed before the write", log, before);
@@ -12749,7 +12749,7 @@ async function cliRun(...argv) {
 }
 const failFiles = () =>
   loadState().run && fs.existsSync(loadState().run)
-    ? fs.readdirSync(loadState().run).filter((f) => /^fail/.test(f))
+    ? fs.readdirSync(loadState().run).filter((f) => f.startsWith("fail"))
     : [];
 const SIM_URL = "http://127.0.0.1:3000/";
 
@@ -12889,7 +12889,7 @@ test("type and keys: a failure after the first character was sent saves no fail.
   assert.match(r.out.error, /no page field is focused/);
   assert.ok(
     r.out.artifacts?.screenshot &&
-      /fail\.png$/.test(r.out.artifacts.screenshot),
+      r.out.artifacts.screenshot.endsWith("fail.png"),
   );
   assert.deepEqual(failFiles().sort(), ["fail.html", "fail.png"]);
   noCanary("keys failed before typing", [], r.text);
@@ -13904,7 +13904,7 @@ test(
 
 const OLD = "https://old.test";
 const guardScripts = () =>
-  executes().filter((b) => /^if \(window\.name !== /.test(b.script));
+  executes().filter((b) => b.script.startsWith("if (window.name !== "));
 const nothingMarked = (token) =>
   assert.ok(
     Object.values(dv.pages).every((p) => p.win.name !== token),
@@ -14627,7 +14627,7 @@ test("a page that forges the guard's and the probe's answers for an allowed host
     const { token } = loadState().deviceTab;
     dv.pageNav(PAGE, "https://private.test/inbox");
     dv.mapResult = (value, s) => {
-      if (/^if \(window\.name !== /.test(s) && /__msl: 3/.test(s))
+      if (s.startsWith("if (window.name !== ") && /__msl: 3/.test(s))
         return { __msl: 3 };
       if (PROBE.test(s)) return [dv.pages[PAGE].origin, OLD, false];
       if (forgeMark && MARK.test(s)) return OLD;
@@ -14655,14 +14655,14 @@ test("a page that forges the guard's and the probe's answers for an allowed host
 test("a guard answer of 3 that the guard could not have given (no list, or after a follow) taints", async () => {
   await startPhone();
   dv.mapResult = (value, s) =>
-    /^if \(window\.name !== /.test(s) ? { __msl: 3 } : value;
+    s.startsWith("if (window.name !== ") ? { __msl: 3 } : value;
   const e = await failing(safari.eval(["1"]));
   assert.equal(e.extra.needs, "tab");
   assert.deepEqual(loadState().deviceTab, tainted());
   await startPhone(false, ["old.test"]);
   dv.pageNav(PAGE, `${OLD}/`);
   dv.mapResult = (value, s) =>
-    /^if \(window\.name !== /.test(s) && !/__msl: 3/.test(s) && !MARK.test(s)
+    s.startsWith("if (window.name !== ") && !/__msl: 3/.test(s) && !MARK.test(s)
       ? { __msl: 3 }
       : value;
   const e2 = await failing(safari.eval(["1"]));
